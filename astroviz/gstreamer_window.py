@@ -9,6 +9,8 @@ import gi
 gi.require_version("Gst", "1.0")
 from gi.repository import Gst, GLib
 
+from astroviz.utils.window_style import DarkStyle
+
 
 class GStreamerPipeline:
     def __init__(self, pipeline_str, callback):
@@ -107,7 +109,7 @@ def main(args=None):
     parsed_args = parser.parse_args(args)
 
     app = QApplication(sys.argv)
-    app.setStyle("Fusion")
+    DarkStyle(app)
     window = GstreamerWindow(
         port=parsed_args.port,
         width=parsed_args.width,
