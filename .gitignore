@@ -6,3 +6,4 @@
 /rosbags 
 
 ### - Python -
+*.pyc
