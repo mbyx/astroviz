@@ -65,13 +65,21 @@ class CmdVelViewer(QWidget):
         w, h = self.width(), self.height()
         size = min(w, h)
         r_full = size / 2
-        margin = 80
+        margin = 60
         r = r_full - margin
         cx, cy = w / 2, h / 2
 
+        size_i = int(r * 2)
+        x0, y0 = int(cx - r), int(cy - r)
+        circ_rect = QRect(x0, y0, size_i, size_i)
+
+        # draw circle
         painter.setPen(QPen(Qt.GlobalColor.white, 3))
-        bar_len = r
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(circ_rect)
+
         # draw cross
+        bar_len = r
         painter.drawLine(
             int(cx - bar_len), int(cy),
             int(cx + bar_len), int(cy)
@@ -80,23 +88,23 @@ class CmdVelViewer(QWidget):
             int(cx), int(cy - bar_len),
             int(cx), int(cy + bar_len)
         )
-        # draw sides
-        painter.drawLine(
-            int(cx - bar_len), int(cy + bar_len),
-            int(cx - bar_len), int(cy - bar_len)
-        )
-        painter.drawLine(
-            int(cx + bar_len), int(cy + bar_len),
-            int(cx - bar_len), int(cy + bar_len)
-        )
-        painter.drawLine(
-            int(cx + bar_len), int(cy + bar_len),
-            int(cx + bar_len), int(cy - bar_len)
-        )
-        painter.drawLine(
-            int(cx + bar_len), int(cy - bar_len),
-            int(cx - bar_len), int(cy - bar_len)
-        )
+        # # draw sides
+        # painter.drawLine(
+        #     int(cx - bar_len), int(cy + bar_len),
+        #     int(cx - bar_len), int(cy - bar_len)
+        # )
+        # painter.drawLine(
+        #     int(cx + bar_len), int(cy + bar_len),
+        #     int(cx - bar_len), int(cy + bar_len)
+        # )
+        # painter.drawLine(
+        #     int(cx + bar_len), int(cy + bar_len),
+        #     int(cx + bar_len), int(cy - bar_len)
+        # )
+        # painter.drawLine(
+        #     int(cx + bar_len), int(cy - bar_len),
+        #     int(cx - bar_len), int(cy - bar_len)
+        # )
 
         # draw linear vel arrow
         painter.setPen(QPen(Qt.GlobalColor.yellow, 6))
@@ -129,7 +137,7 @@ class CmdVelViewer(QWidget):
         if self.yaw != 0:
             def draw_yaw(angle_offs: int):
                 # Arc parameters
-                arc_radius = r
+                arc_radius = r * 1.2
                 arc_span_deg = abs(self.yaw / self.max_yaw * 30)  # degrees
 
                 # Direction: left (positive yaw) or right (negative yaw)
