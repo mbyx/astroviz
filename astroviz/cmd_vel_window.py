@@ -4,9 +4,13 @@ import math
 import os
 
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QComboBox
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QComboBox,
 )
-from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QFont, QIcon
+from PyQt6.QtGui import QPainter, QPen, QIcon
 from PyQt6.QtCore import Qt, QRect, QRectF, QTimer, QPointF
 
 import rclpy
@@ -23,7 +27,7 @@ if _src_config:
     _CONFIG_DIR = _src_config
 else:
     _CONFIG_DIR = os.path.join(
-        get_package_share_directory('astroviz'), 'config'
+        get_package_share_directory("astroviz"), "config"
     )
 
 
@@ -31,12 +35,12 @@ _pkg = _find_pkg()
 if _pkg:
     _PKG_DIR = _pkg
 else:
-    _PKG_DIR = get_package_share_directory('astroviz')
+    _PKG_DIR = get_package_share_directory("astroviz")
 
 os.makedirs(_CONFIG_DIR, exist_ok=True)
 
-CONFIG_PATH = os.path.join(_CONFIG_DIR, 'dashboard_config.json')
-ICONS_DIR = os.path.join(_PKG_DIR, 'icons')
+CONFIG_PATH = os.path.join(_CONFIG_DIR, "dashboard_config.json")
+ICONS_DIR = os.path.join(_PKG_DIR, "icons")
 
 
 class CmdVelViewer(QWidget):
@@ -81,12 +85,10 @@ class CmdVelViewer(QWidget):
         # draw cross
         bar_len = r
         painter.drawLine(
-            int(cx - bar_len), int(cy),
-            int(cx + bar_len), int(cy)
+            int(cx - bar_len), int(cy), int(cx + bar_len), int(cy)
         )
         painter.drawLine(
-            int(cx), int(cy - bar_len),
-            int(cx), int(cy + bar_len)
+            int(cx), int(cy - bar_len), int(cx), int(cy + bar_len)
         )
         # # draw sides
         # painter.drawLine(
@@ -110,8 +112,8 @@ class CmdVelViewer(QWidget):
         painter.setPen(QPen(Qt.GlobalColor.yellow, 6))
         # NOTE: x and y are swapped and inverted in Qt
         # cmd-vel's convention is x forward and y towards right
-        y_len = - self.x / self.max_x * 2 * r
-        x_len = - self.y / self.max_y * 2 * r
+        y_len = -self.x / self.max_x * 2 * r
+        x_len = -self.y / self.max_y * 2 * r
         x1, y1 = cx, cy
         x2, y2 = cx + x_len, cy + y_len
 
@@ -125,16 +127,17 @@ class CmdVelViewer(QWidget):
                 int(x2),
                 int(y2),
                 int(x2 - arrow_len * math.cos(angle - math.pi / 6)),
-                int(y2 - arrow_len * math.sin(angle - math.pi / 6))
+                int(y2 - arrow_len * math.sin(angle - math.pi / 6)),
             )
             painter.drawLine(
                 int(x2),
                 int(y2),
                 int(x2 - arrow_len * math.cos(angle + math.pi / 6)),
-                int(y2 - arrow_len * math.sin(angle + math.pi / 6))
+                int(y2 - arrow_len * math.sin(angle + math.pi / 6)),
             )
 
         if self.yaw != 0:
+
             def draw_yaw(angle_offs: int):
                 # Arc parameters
                 arc_radius = r * 1.2
@@ -147,8 +150,8 @@ class CmdVelViewer(QWidget):
                 rect = QRectF(
                     cx - arc_radius,
                     cy - arc_radius,
-                    2*arc_radius,
-                    2*arc_radius
+                    2 * arc_radius,
+                    2 * arc_radius,
                 )
                 start_angle = angle_offs * 16  # 0° = east, counterclockwise +
                 span_angle = sign * arc_span_deg * 16
@@ -180,16 +183,17 @@ class CmdVelViewer(QWidget):
 
                 p1 = QPointF(
                     x_end - arrow_size * math.cos(tangent_angle - alpha),
-                    y_end - arrow_size * math.sin(tangent_angle - alpha)
+                    y_end - arrow_size * math.sin(tangent_angle - alpha),
                 )
                 p2 = QPointF(
                     x_end - arrow_size * math.cos(tangent_angle + alpha),
-                    y_end - arrow_size * math.sin(tangent_angle + alpha)
+                    y_end - arrow_size * math.sin(tangent_angle + alpha),
                 )
 
                 painter.setPen(QPen(Qt.GlobalColor.green, 4))
                 painter.drawLine(QPointF(x_end, y_end), p1)
                 painter.drawLine(QPointF(x_end, y_end), p2)
+
             draw_yaw(0)
             draw_yaw(90)
             draw_yaw(180)
@@ -200,8 +204,8 @@ class MainWindow(QMainWindow):
     def __init__(self, node: Node):
         super().__init__()
         self.node = node
-        self.setWindowTitle('Cmd-Vel Direction')
-        self.setWindowIcon(QIcon(os.path.join(ICONS_DIR, 'astroviz_icon.png')))
+        self.setWindowTitle("Cmd-Vel Direction")
+        self.setWindowIcon(QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png")))
 
         self.setGeometry(100, 100, 400, 400)
 
@@ -225,7 +229,9 @@ class MainWindow(QMainWindow):
         self.topic_timer.start(1000)
 
         self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0))
+        self.ros_timer.timeout.connect(
+            lambda: rclpy.spin_once(self.node, timeout_sec=0)
+        )
         self.ros_timer.start(50)
 
     def showEvent(self, event):
@@ -247,10 +253,11 @@ class MainWindow(QMainWindow):
         current = self.combo.currentText()
         all_topics = self.node.get_topic_names_and_types()
         imu_topics = [
-            name for name, types in all_topics
-            if 'geometry_msgs/msg/Twist' in types
+            name
+            for name, types in all_topics
+            if "geometry_msgs/msg/Twist" in types
         ]
-        items = ['---'] + imu_topics
+        items = ["---"] + imu_topics
 
         old = [self.combo.itemText(i) for i in range(self.combo.count())]
         if old == items:
@@ -263,7 +270,7 @@ class MainWindow(QMainWindow):
             self.combo.setCurrentText(current)
         else:
             self.combo.setCurrentIndex(0)
-            self.change_topic('---')
+            self.change_topic("---")
         self.combo.blockSignals(False)
 
     def change_topic(self, topic_name: str):
@@ -274,14 +281,11 @@ class MainWindow(QMainWindow):
                 pass
             self.imu_sub = None
 
-        if topic_name == '---':
+        if topic_name == "---":
             return
 
         self.imu_sub = self.node.create_subscription(
-            Twist,
-            topic_name,
-            self.callback,
-            QoSProfile(depth=1)
+            Twist, topic_name, self.callback, QoSProfile(depth=1)
         )
 
     def callback(self, msg: Twist):
@@ -297,12 +301,12 @@ def main(args=None):
     rclpy.init(args=args)
     app = QApplication(sys.argv)
     DarkStyle(app)
-    node = rclpy.create_node('cmd_vel_window')
+    node = rclpy.create_node("cmd_vel_window")
     window = MainWindow(node)
     window.show()
     app.exec()
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
