@@ -122,7 +122,9 @@ class CmdVelViewer(QWidget):
         if self.x != 0 or self.y != 0:
             line_len = math.sqrt(x_len**2 + y_len**2)
             arrow_len = 0.1 * line_len
-            angle = math.atan2(y2 - y1, x2 - x1)  # angle of the tip's lines
+            angle = math.atan2(
+                y2 - y1, x2 - x1
+            )  # angle of the tip's lines
             painter.drawLine(
                 int(x2),
                 int(y2),
@@ -141,7 +143,9 @@ class CmdVelViewer(QWidget):
             def draw_yaw(angle_offs: int):
                 # Arc parameters
                 arc_radius = r * 1.2
-                arc_span_deg = abs(self.yaw / self.max_yaw * 30)  # degrees
+                arc_span_deg = abs(
+                    self.yaw / self.max_yaw * 30
+                )  # degrees
 
                 # Direction: left (positive yaw) or right (negative yaw)
                 sign = 1 if self.yaw >= 0 else -1
@@ -153,14 +157,18 @@ class CmdVelViewer(QWidget):
                     2 * arc_radius,
                     2 * arc_radius,
                 )
-                start_angle = angle_offs * 16  # 0° = east, counterclockwise +
+                start_angle = (
+                    angle_offs * 16
+                )  # 0° = east, counterclockwise +
                 span_angle = sign * arc_span_deg * 16
 
                 painter.setPen(QPen(Qt.GlobalColor.green, 4))
                 painter.drawArc(rect, int(start_angle), int(span_angle))
 
                 # Compute endpoint of arc
-                end_angle = (angle_offs + sign * arc_span_deg) * math.pi / 180
+                end_angle = (
+                    (angle_offs + sign * arc_span_deg) * math.pi / 180
+                )
                 x_end = cx + arc_radius * math.cos(end_angle)
                 y_end = cy - arc_radius * math.sin(end_angle)
 
@@ -182,12 +190,16 @@ class CmdVelViewer(QWidget):
                 alpha = math.pi / 6  # 30° wing angle
 
                 p1 = QPointF(
-                    x_end - arrow_size * math.cos(tangent_angle - alpha),
-                    y_end - arrow_size * math.sin(tangent_angle - alpha),
+                    x_end
+                    - arrow_size * math.cos(tangent_angle - alpha),
+                    y_end
+                    - arrow_size * math.sin(tangent_angle - alpha),
                 )
                 p2 = QPointF(
-                    x_end - arrow_size * math.cos(tangent_angle + alpha),
-                    y_end - arrow_size * math.sin(tangent_angle + alpha),
+                    x_end
+                    - arrow_size * math.cos(tangent_angle + alpha),
+                    y_end
+                    - arrow_size * math.sin(tangent_angle + alpha),
                 )
 
                 painter.setPen(QPen(Qt.GlobalColor.green, 4))
@@ -205,7 +217,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.node = node
         self.setWindowTitle("Cmd-Vel Direction")
-        self.setWindowIcon(QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png")))
+        self.setWindowIcon(
+            QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png"))
+        )
 
         self.setGeometry(100, 100, 400, 400)
 
@@ -259,7 +273,9 @@ class MainWindow(QMainWindow):
         ]
         items = ["---"] + imu_topics
 
-        old = [self.combo.itemText(i) for i in range(self.combo.count())]
+        old = [
+            self.combo.itemText(i) for i in range(self.combo.count())
+        ]
         if old == items:
             return
 

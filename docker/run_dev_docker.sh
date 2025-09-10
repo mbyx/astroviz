@@ -12,6 +12,7 @@ if [ $isRunning -eq 0 ]; then
         --env NVIDIA_DRIVER_CAPABILITIES=all \
         --env QTWEBENGINE_DISABLE_SANDBOX=1 \
         --env QT_X11_NO_MITSHM=1 \
+        --env ROS_DOMAIN_ID=17 \
         --net host \
         --ipc host \
         --pid host \
@@ -19,7 +20,6 @@ if [ $isRunning -eq 0 ]; then
         -it \
         -v /dev:/dev \
         -v `pwd`/../:/ros2_ws/src/astroviz \
-        -v `pwd`/../../g1pilot:/ros2_ws/src/g1pilot \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v /run/dbus:/run/dbus \
         -w /ros2_ws \

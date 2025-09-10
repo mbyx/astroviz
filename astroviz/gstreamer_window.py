@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from PyQt6.QtWidgets import (
     QApplication,
@@ -8,8 +9,31 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QObject
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QImage, QPixmap, QIcon
 from threading import Thread
+
+from ament_index_python.packages import get_package_share_directory
+from astroviz.common._find import _find_pkg, _find_src_config
+
+_src_config = _find_src_config()
+if _src_config:
+    _CONFIG_DIR = _src_config
+else:
+    _CONFIG_DIR = os.path.join(
+        get_package_share_directory("astroviz"), "config"
+    )
+
+
+_pkg = _find_pkg()
+if _pkg:
+    _PKG_DIR = _pkg
+else:
+    _PKG_DIR = get_package_share_directory("astroviz")
+
+os.makedirs(_CONFIG_DIR, exist_ok=True)
+
+CONFIG_PATH = os.path.join(_CONFIG_DIR, "dashboard_config.json")
+ICONS_DIR = os.path.join(_PKG_DIR, "icons")
 
 
 class GStreamerPipeline:
@@ -95,6 +119,9 @@ class GstreamerWindow(QWidget):
     def __init__(self, port=5000, width=1280, height=720, flip=0):
         super().__init__()
         self.setWindowTitle("Gstreamer")
+        self.setWindowIcon(
+            QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png"))
+        )
         main_layout = QGridLayout(self)
         self.port = port
         self.width = width
