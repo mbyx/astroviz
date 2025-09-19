@@ -21,6 +21,7 @@ from rclpy.node import Node
 
 # Import your existing windows
 from astroviz.tts_window import MainWindow as TTSWindow
+from astroviz.audio_player_window import MainWindow as AudioWindow
 from astroviz.cmd_vel_window import MainWindow as CmdVelWindow
 from astroviz.gstreamer_shelfy_window import GstreamerWindow
 
@@ -206,6 +207,7 @@ def main():
 
     # RIGHT: Grid of other panels
     host.add_widget(TTSWindow(node, predef_msgs), row=0, col=0)
+    host.add_widget(AudioWindow(node), row=0, col=1)
     host.add_widget(CmdVelWindow(node), row=1, col=0)
     # Example: add more to the right grid
     # host.add_widget(AnotherPanel(node),  row=0, col=1)

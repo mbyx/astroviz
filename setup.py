@@ -44,6 +44,7 @@ setup(
             "gstreamer_shelfy_viewer = astroviz.gstreamer_shelfy_window:main",
             "cmd_vel_viewer = astroviz.cmd_vel_window:main",
             "tts_viewer = astroviz.tts_window:main",
+            "audio_player_viewer = astroviz.audio_player_window:main",
             "shelfy_dashboard_viewer = astroviz.shelfy_dashboard_window:main",
         ],
     },

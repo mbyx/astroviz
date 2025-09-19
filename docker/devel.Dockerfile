@@ -77,5 +77,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /ros2_ws/src
 RUN git clone https://github.com/CDonosoK/astroviz_interfaces.git
+RUN git clone https://gitlab.inria.fr/pepr-o2r-as3/software/pyaudio_common.git
 
 CMD ["bash"]
