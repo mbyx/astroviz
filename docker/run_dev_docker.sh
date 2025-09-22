@@ -23,6 +23,7 @@ if [ $isRunning -eq 0 ]; then
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v /run/dbus:/run/dbus \
         -w /ros2_ws \
+        --entrypoint /shelfy_dashboard_entrypoint.sh \
         astroviz:latest
 
 else

@@ -54,7 +54,6 @@ RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /etc/bash.bashrc
 RUN pip install --upgrade "pybind11>=2.12" "numpy<2"
 RUN pip install urdfpy PyQt6-Charts
 
-
 RUN mkdir -p /ros2_ws/src
 
 RUN  apt update
@@ -75,8 +74,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gst-inspect-1.0 > /dev/null && \
     rm -rf /var/lib/apt/lists/*
 
+# Install cyclone-dds
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \   
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /ros2_ws/src
 RUN git clone https://github.com/CDonosoK/astroviz_interfaces.git
+
+# For Shelfy dashboard
 RUN git clone https://gitlab.inria.fr/pepr-o2r-as3/software/pyaudio_common.git
+RUN git clone --branch shelfy --single-branch https://github.com/hucebot/astroviz.git
+WORKDIR /ros2_ws
+RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+  && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+RUN echo "source /ros2_ws/install/setup.bash" >> /etc/bash.bashrc
+
+COPY shelfy_dashboard_entrypoint.sh /shelfy_dashboard_entrypoint.sh
+RUN chmod +x /shelfy_dashboard_entrypoint.sh
 
 CMD ["bash"]
