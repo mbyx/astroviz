@@ -23,7 +23,11 @@ from rclpy.node import Node
 from astroviz.tts_window import MainWindow as TTSWindow
 from astroviz.audio_player_window import MainWindow as AudioWindow
 from astroviz.cmd_vel_window import MainWindow as CmdVelWindow
-from astroviz.gstreamer_shelfy_window import GstreamerWindow
+from astroviz.camera_window import CameraViewer
+from astroviz.gstreamer_shelfy_window import (
+    GstreamerWindow as ShelfyGstreamerWindow,
+)
+from astroviz.gstreamer_window import GstreamerWindow
 
 from ament_index_python.packages import get_package_share_directory
 from astroviz.common._find import _find_pkg, _find_src_config
@@ -59,9 +63,7 @@ class MultiWindowHost(QMainWindow):
     def __init__(self, grid_shape: Tuple[int, int] = (2, 2)):
         super().__init__()
         self.setWindowTitle("Shelfy Teleoperation Dashboard")
-        self.setWindowIcon(
-            QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png"))
-        )
+        self.setWindowIcon(QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png")))
         self._owned_widgets: List[QWidget] = []
 
         self._rows, self._cols = grid_shape
@@ -198,20 +200,29 @@ def main():
     node = rclpy.create_node("astroviz_dashboard")
 
     host = MultiWindowHost(grid_shape=(2, 2))
-    host.resize(1100, 1280)
-    host.set_initial_splitter_sizes(left_px=700, right_px=400)
+    host.showMaximized()
+    screen = app.primaryScreen()
+    size = screen.size()
+    width = size.width()
+    height = size.height()
+    print(f"Screen width: {width}, height: {height}")
+    gstreamer_px = 600
+    host.set_initial_splitter_sizes(
+        left_px=gstreamer_px, right_px=width - gstreamer_px
+    )
 
     # LEFT: GStreamer view (occupies entire left pane)
-    gst = GstreamerWindow(port=5000, width=960, height=540)
-    host.add_left_widget(gst)
+    gst_shelfy = ShelfyGstreamerWindow(port=5000, width=960, height=540)
+    host.add_left_widget(gst_shelfy)
 
     # RIGHT: Grid of other panels
-    host.add_widget(TTSWindow(node, predef_msgs), row=0, col=0)
-    host.add_widget(AudioWindow(node), row=0, col=1)
-    host.add_widget(CmdVelWindow(node), row=1, col=0)
+    gst_screen = GstreamerWindow(port=5004)
+    host.add_widget(CameraViewer(node), row=0, col=0)
+    host.add_widget(gst_screen, row=1, col=0)
+    host.add_widget(CmdVelWindow(node), row=0, col=1)
+    host.add_widget(AudioWindow(node), row=1, col=1)
     # Example: add more to the right grid
-    # host.add_widget(AnotherPanel(node),  row=0, col=1)
-    # host.add_widget(YetAnother(node),    row=1, col=1)
+    # host.add_widget(TTSWindow(node, predef_msgs), row=1, col=1)
 
     host.show()
     app.exec()
