@@ -18,6 +18,7 @@ RUN apt-get update && \
       libxcursor1 libxdamage1 libxtst6 libglib2.0-0 libgtk-3-0 \
       libxcb-util1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 \
       libxcb-keysyms1 libxcb-image0 libxcb-randr0 libxcb-xtest0 \
+      libxkbcommon-x11-0 libxrender1 libxext6 libsm6 libxi6 libglu1-mesa \
       libxcb-cursor0 libasound2 libproj-dev libgeos-dev python3-gi-cairo && \
     rm -rf /var/lib/apt/lists/*
 
