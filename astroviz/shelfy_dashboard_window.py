@@ -7,17 +7,15 @@ from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
     QWidget,
-    QGridLayout,
-    QScrollArea,
-    QSizePolicy,
-    QSplitter,
     QVBoxLayout,
+    QSplitter,
+    QSizePolicy,
+    QFrame,
 )
 from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 
 import rclpy
-from rclpy.node import Node
 
 # Import your existing windows
 from astroviz.tts_window import MainWindow as TTSWindow
@@ -40,7 +38,6 @@ else:
         get_package_share_directory("astroviz"), "config"
     )
 
-
 _pkg = _find_pkg()
 if _pkg:
     _PKG_DIR = _pkg
@@ -53,131 +50,173 @@ CONFIG_PATH = os.path.join(_CONFIG_DIR, "dashboard_config.json")
 ICONS_DIR = os.path.join(_PKG_DIR, "icons")
 
 
-class MultiWindowHost(QMainWindow):
+class SplitterGrid(QWidget):
     """
-    Host window:
-      - Left pane: a single widget (e.g., GStreamer video) in a QSplitter.
-      - Right pane: a scrollable QGridLayout for other widgets.
+    2x3 grid using nested QSplitters with the following behavior:
+    - **Vertical splitters are GLOBAL** across all rows (dragging a column divider
+      resizes that column everywhere). Implemented by an outer *horizontal* splitter
+      that owns the 3 columns.
+    - **Horizontal splitters are INDEPENDENT** per column (dragging the row divider
+      affects only that column). Implemented by an inner *vertical* splitter inside
+      each column pane.
+
+    All panes are fully collapsible.
     """
 
-    def __init__(self, grid_shape: Tuple[int, int] = (2, 2)):
+    def __init__(self, rows: int, cols: int, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        assert rows >= 1 and cols >= 1
+        self.rows = rows
+        self.cols = cols
+
+        # OUTER: columns (global vertical splitters)
+        self._hsplitter = QSplitter(Qt.Orientation.Horizontal, self)
+        self._hsplitter.setChildrenCollapsible(True)
+
+        # Each column contains a vertical splitter for the rows (independent)
+        self._col_vsplitters: List[QSplitter] = []
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(self._hsplitter)
+
+        for c in range(cols):
+            vsplit = QSplitter(Qt.Orientation.Vertical)
+            vsplit.setChildrenCollapsible(True)
+            self._col_vsplitters.append(vsplit)
+            self._hsplitter.addWidget(vsplit)
+
+            # Fill with placeholders for each row
+            for r in range(rows):
+                ph = self._make_placeholder()
+                vsplit.addWidget(ph)
+                try:
+                    vsplit.setCollapsible(r, True)
+                except Exception:
+                    pass
+
+            # Allow columns themselves to collapse fully
+            try:
+                self._hsplitter.setCollapsible(c, True)
+            except Exception:
+                pass
+
+    def _make_placeholder(self) -> QWidget:
+        ph = QFrame()
+        ph.setFrameShape(QFrame.Shape.StyledPanel)
+        ph.setStyleSheet(
+            "QFrame { background: #222; border: 1px dashed #444; }"
+        )
+        ph.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        ph.setMinimumSize(QSize(0, 0))
+        return ph
+
+    def set_widget(self, row: int, col: int, w: QWidget):
+        assert 0 <= row < self.rows and 0 <= col < self.cols
+        vsplit = self._col_vsplitters[col]
+        w.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        w.setMinimumSize(QSize(0, 0))
+        # Replace the existing widget at index `row` in this column's vsplitter
+        old = vsplit.widget(row)
+        if old is not None:
+            old.setParent(None)
+        vsplit.insertWidget(row, w)
+        if vsplit.count() > self.rows:
+            extra = vsplit.widget(row + 1)
+            if extra is not None:
+                extra.setParent(None)
+        try:
+            vsplit.setCollapsible(row, True)
+        except Exception:
+            pass
+
+    # --- Sizing helpers ---
+    def set_col_sizes(self, sizes: List[int]):
+        """Set global column widths (applies to the outer horizontal splitter)."""
+        if not sizes:
+            return
+        total = sum(sizes)
+        if total <= 0:
+            return
+        scaled = [max(0, int(1000 * s / total)) for s in sizes]
+        self._hsplitter.setSizes(scaled)
+
+    def set_row_sizes_for_column(self, col: int, sizes: List[int]):
+        """Set row heights for a single column (independent)."""
+        assert 0 <= col < self.cols
+        if not sizes:
+            return
+        total = sum(sizes)
+        if total <= 0:
+            return
+        scaled = [max(0, int(1000 * s / total)) for s in sizes]
+        self._col_vsplitters[col].setSizes(scaled)
+
+    def set_all_row_sizes(self, sizes: List[int]):
+        """Optionally apply the same row sizes to every column (still independent)."""
+        for c in range(self.cols):
+            self.set_row_sizes_for_column(c, sizes)
+
+
+class MultiWindowHost(QMainWindow):
+    """Host window with a 2x3 nested-splitter grid.
+    Vertical splitters (between columns) are global; horizontal splitters (between rows)
+    are independent per column.
+    """
+
+    def __init__(self, grid_shape: Tuple[int, int] = (2, 3)):
         super().__init__()
         self.setWindowTitle("Shelfy Teleoperation Dashboard")
         self.setWindowIcon(QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png")))
         self._owned_widgets: List[QWidget] = []
 
         self._rows, self._cols = grid_shape
-        self._next_index = 0  # for auto placement on the right grid
 
-        # ---------------- Splitter: [ left | right ] ----------------
-        self._splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        self.setCentralWidget(self._splitter)
+        self._central = QWidget(self)
+        self.setCentralWidget(self._central)
+        self._root_layout = QVBoxLayout(self._central)
+        self._root_layout.setContentsMargins(8, 8, 8, 8)
+        self._root_layout.setSpacing(8)
 
-        # Left container (will hold exactly one child widget, e.g., GStreamer)
-        self._left_container = QWidget(self._splitter)
-        self._left_container.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        self._left_layout = QVBoxLayout(self._left_container)
-        self._left_layout.setContentsMargins(0, 0, 0, 0)
-        self._left_layout.setSpacing(0)
-        self._splitter.addWidget(self._left_container)
+        self._grid = SplitterGrid(self._rows, self._cols, parent=self._central)
+        self._root_layout.addWidget(self._grid)
 
-        # Right side: scrollable grid container
-        self._right_scroll = QScrollArea(self._splitter)
-        self._right_scroll.setWidgetResizable(True)
-
-        self._right_container = QWidget()
-        self._right_scroll.setWidget(self._right_container)
-
-        self._grid = QGridLayout(self._right_container)
-        self._grid.setContentsMargins(10, 10, 10, 10)
-        self._grid.setHorizontalSpacing(10)
-        self._grid.setVerticalSpacing(10)
-
-        self._splitter.addWidget(self._right_scroll)
-
-        # Give the left pane more width by default (tweak to taste)
-        self._splitter.setStretchFactor(0, 3)  # left
-        self._splitter.setStretchFactor(1, 2)  # right
-
-        # Optional: a subtle status bar for the host
         self.statusBar().setStyleSheet(
-            """
-            QStatusBar {
-                background: #3a3a3a;
-                color: #FFFFFF;
-                border-top: 1px solid #444;
-            }
-            """
+            "QStatusBar { background: #3a3a3a; color: #FFFFFF; border-top: 1px solid #444; }"
         )
-
-    # ---------------- Helpers ----------------
 
     def _normalize_child(self, w: QWidget) -> QWidget:
-        """
-        Make sure a QMainWindow/QWidget can live as a child panel:
-        - remove window decorations
-        - give reasonable size policy
-        """
         if isinstance(w, QMainWindow):
             w.setWindowFlags(Qt.WindowType.Widget)
         w.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
+        w.setMinimumSize(QSize(0, 0))
         return w
 
-    # ---------------- Public API ----------------
-
-    def add_left_widget(self, w: QWidget):
-        """
-        Put a single widget on the left side (e.g., the GStreamer view).
-        Replaces any existing left widget.
-        """
+    def add_widget(self, w: QWidget, row: int, col: int):
         w = self._normalize_child(w)
         self._owned_widgets.append(w)
+        self._grid.set_widget(row, col, w)
 
-        # Clear previous
-        while self._left_layout.count():
-            item = self._left_layout.takeAt(0)
-            old = item.widget()
-            if old is not None:
-                old.setParent(None)
+    # passthrough helpers
+    def set_col_sizes(self, sizes: List[int]):
+        self._grid.set_col_sizes(sizes)
 
-        self._left_layout.addWidget(w)
+    def set_row_sizes_for_column(self, col: int, sizes: List[int]):
+        self._grid.set_row_sizes_for_column(col, sizes)
 
-    def add_widget(
-        self,
-        w: QWidget,
-        row: Optional[int] = None,
-        col: Optional[int] = None,
-        row_span: int = 1,
-        col_span: int = 1,
-    ):
-        """
-        Add any QWidget (including a QMainWindow instance) into the RIGHT grid.
-        If row/col are not provided, auto-place in the next slot.
-        """
-        w = self._normalize_child(w)
-        w.setParent(self._right_container)
-        self._owned_widgets.append(w)
-
-        if row is None or col is None:
-            idx = self._next_index
-            row = idx // self._cols
-            col = idx % self._cols
-            self._next_index += 1
-
-        self._grid.addWidget(w, row, col, row_span, col_span)
-
-    def set_initial_splitter_sizes(self, left_px: int, right_px: int):
-        """Optionally set initial pixel sizes of left/right panes."""
-        self._splitter.setSizes([left_px, right_px])
+    def set_all_row_sizes(self, sizes: List[int]):
+        self._grid.set_all_row_sizes(sizes)
 
     def closeEvent(self, event):
         for w in self._owned_widgets:
             try:
-                w.close()  # triggers their own cleanup
+                w.close()
             except Exception:
                 pass
         super().closeEvent(event)
@@ -199,30 +238,31 @@ def main():
     # Shared node
     node = rclpy.create_node("astroviz_dashboard")
 
-    host = MultiWindowHost(grid_shape=(2, 2))
+    host = MultiWindowHost(grid_shape=(2, 3))
     host.showMaximized()
-    screen = app.primaryScreen()
-    size = screen.size()
-    width = size.width()
-    height = size.height()
-    print(f"Screen width: {width}, height: {height}")
-    gstreamer_px = 600
-    host.set_initial_splitter_sizes(
-        left_px=gstreamer_px, right_px=width - gstreamer_px
-    )
 
-    # LEFT: GStreamer view (occupies entire left pane)
-    gst_shelfy = ShelfyGstreamerWindow(port=5000, width=960, height=540)
-    host.add_left_widget(gst_shelfy)
-
-    # RIGHT: Grid of other panels
+    # Build widgets
     gst_screen = GstreamerWindow(port=5004)
-    host.add_widget(CameraViewer(node), row=0, col=0)
-    host.add_widget(gst_screen, row=1, col=0)
-    host.add_widget(CmdVelWindow(node), row=0, col=1)
-    host.add_widget(AudioWindow(node), row=1, col=1)
-    # Example: add more to the right grid
-    # host.add_widget(TTSWindow(node, predef_msgs), row=1, col=1)
+    camera_viewer = CameraViewer(node)
+    cmd_vel = CmdVelWindow(node)
+    gst_webcam = ShelfyGstreamerWindow(port=5000, width=960, height=540)
+    audio = AudioWindow(node)
+
+    # Layout:
+    # top_row: webcam, camera, cmd_vel
+    host.add_widget(gst_webcam, row=0, col=0)
+    host.add_widget(camera_viewer, row=0, col=1)
+    host.add_widget(cmd_vel, row=0, col=2)
+    # bottom_row: empty, screen, audio
+    # (1,0) left empty intentionally
+    host.add_widget(gst_screen, row=1, col=1)
+    host.add_widget(audio, row=1, col=2)
+
+    # Optional initial sizes:
+    host.set_col_sizes([1, 1, 1])  # global columns
+    host.set_row_sizes_for_column(0, [1, 1])  # webcam column
+    host.set_row_sizes_for_column(1, [1, 1])  # camera/screen column
+    host.set_row_sizes_for_column(2, [1, 1])  # cmd_vel/audio column
 
     host.show()
     app.exec()
