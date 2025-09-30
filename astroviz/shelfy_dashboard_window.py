@@ -18,7 +18,6 @@ from PyQt6.QtCore import Qt, QSize
 import rclpy
 
 # Import your existing windows
-from astroviz.tts_window import MainWindow as TTSWindow
 from astroviz.audio_player_window import MainWindow as AudioWindow
 from astroviz.cmd_vel_window import MainWindow as CmdVelWindow
 from astroviz.camera_window import CameraViewer
@@ -226,12 +225,6 @@ class MultiWindowHost(QMainWindow):
 def main():
     from astroviz.utils.window_style import DarkStyle
 
-    predef_msgs = [
-        "Hello, I'm Shelfy!",
-        "Please, fill your order by pressing the buttons.",
-        "Please, load the order you see on the screen.",
-    ]
-
     rclpy.init()
     app = QApplication(sys.argv)
     DarkStyle(app)
@@ -259,6 +252,15 @@ def main():
     host.add_widget(cafe_menu, row=1, col=0)
     host.add_widget(gst_screen, row=1, col=1)
     host.add_widget(audio, row=1, col=2)
+
+    # # Example: add the TTSWindow
+    # from astroviz.tts_window import MainWindow as TTSWindow
+    # predef_msgs = [
+    #     "Hello, I'm Shelfy!",
+    #     "Please, fill your order by pressing the buttons.",
+    #     "Please, load the order you see on the screen.",
+    # ]
+    # host.add_widget(TTSWindow(node, predef_msgs), row=1, col=2)
 
     # Optional initial sizes:
     host.set_col_sizes([1, 1, 1])  # global columns
