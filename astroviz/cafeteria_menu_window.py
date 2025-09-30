@@ -149,7 +149,7 @@ class MainWindow(QMainWindow):
             Empty, "/menu_node/done", self._cb_done, qos
         )
         self.pub_reset = self.node.create_publisher(
-            Empty, "/menu_node/reset", qos
+            Empty, "/menu_node/reset", 1
         )
 
         # internal queue as a list of ints, unique membership
