@@ -2,6 +2,8 @@
 import sys
 import math
 import os
+import subprocess
+import re
 from typing import Optional
 
 from PyQt6.QtWidgets import (
@@ -9,6 +11,8 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
     QComboBox,
 )
 from PyQt6.QtGui import QPainter, QPen, QIcon
@@ -19,6 +23,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
+from std_msgs.msg import Int32
 
 from ament_index_python.packages import get_package_share_directory
 from astroviz.utils.window_style import DarkStyle
@@ -32,7 +37,6 @@ else:
         get_package_share_directory("astroviz"), "config"
     )
 
-
 _pkg = _find_pkg()
 if _pkg:
     _PKG_DIR = _pkg
@@ -45,23 +49,22 @@ CONFIG_PATH = os.path.join(_CONFIG_DIR, "dashboard_config.json")
 ICONS_DIR = os.path.join(_PKG_DIR, "icons")
 
 
-class CmdVelScanViewer(QWidget):
+class MobileBaseViewer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(200, 200)
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
-        # TODO: take these from params
+
         self.max_x = 0.5
         self.max_y = 0.5
         self.max_yaw = 1.0
 
+        self.scan_thresh = 1.0
+
         # LaserScan drawing state
         self._scan: Optional[LaserScan] = None
-        self.scan_thresh: float = (
-            0.6  # meters; can be overridden via ROS param
-        )
 
     def set_cmd_vel(self, x: float, y: float, yaw: float):
         self.x = x
@@ -72,6 +75,21 @@ class CmdVelScanViewer(QWidget):
     def set_scan(self, scan: LaserScan):
         self._scan = scan
         self.update()
+
+    def set_max_x(self, value: float):
+        if value > 0:
+            self.max_x = value
+            self.update()
+
+    def set_max_y(self, value: float):
+        if value > 0:
+            self.max_y = value
+            self.update()
+
+    def set_max_yaw(self, value: float):
+        if value > 0:
+            self.max_y = value
+            self.update()
 
     def set_scan_threshold(self, meters: float):
         if meters <= 0:
@@ -109,7 +127,7 @@ class CmdVelScanViewer(QWidget):
             int(cx), int(cy - bar_len), int(cx), int(cy + bar_len)
         )
 
-        # draw obstalce lines
+        # draw obstacle frame lines (scaled by threshold for context)
         painter.setPen(QPen(Qt.GlobalColor.white, 1))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         tl_x = int(cx - int(self.scan_thresh * 60))
@@ -120,7 +138,6 @@ class CmdVelScanViewer(QWidget):
         bl_y = int(cy + int(self.scan_thresh * 90))
         br_x = int(cx + int(self.scan_thresh * 60))
         br_y = int(cy + int(self.scan_thresh * 90))
-        bar_len = r * 0.86
         painter.drawLine(tl_x, tl_y, tr_x, tr_y)
         painter.drawLine(bl_x, bl_y, br_x, br_y)
         painter.drawLine(tl_x, tl_y, bl_x, bl_y)
@@ -129,7 +146,6 @@ class CmdVelScanViewer(QWidget):
         # draw linear vel arrow
         painter.setPen(QPen(Qt.GlobalColor.yellow, 6))
         # NOTE: x and y are swapped and inverted in Qt
-        # cmd-vel's convention is x forward and y towards right
         y_len = -self.x / self.max_x * r
         x_len = -self.y / self.max_y * r
         x1, y1 = cx, cy
@@ -140,7 +156,7 @@ class CmdVelScanViewer(QWidget):
         if self.x != 0 or self.y != 0:
             line_len = math.sqrt(x_len**2 + y_len**2)
             arrow_len = 0.1 * line_len
-            angle = math.atan2(y2 - y1, x2 - x1)  # angle of the tip's lines
+            angle = math.atan2(y2 - y1, x2 - x1)
             painter.drawLine(
                 int(x2),
                 int(y2),
@@ -157,39 +173,30 @@ class CmdVelScanViewer(QWidget):
         if self.yaw != 0:
 
             def draw_yaw(angle_offs: int):
-                # Arc parameters
                 arc_radius = r * 1.2
-                arc_span_deg = abs(self.yaw / self.max_yaw * 30)  # degrees
-
-                # Direction: left (positive yaw) or right (negative yaw)
+                arc_span_deg = abs(self.yaw / self.max_yaw * 30)
                 sign = 1 if self.yaw >= 0 else -1
-
-                # Draw arc (Qt expects 1/16 degrees for start & span)
                 rect = QRectF(
                     cx - arc_radius,
                     cy - arc_radius,
                     2 * arc_radius,
                     2 * arc_radius,
                 )
-                start_angle = angle_offs * 16  # 0° = east, counterclockwise +
+                start_angle = angle_offs * 16
                 span_angle = sign * arc_span_deg * 16
 
                 painter.setPen(QPen(Qt.GlobalColor.green, 4))
                 painter.drawArc(rect, int(start_angle), int(span_angle))
 
-                # Compute endpoint of arc
                 end_angle = (angle_offs + sign * arc_span_deg) * math.pi / 180
                 x_end = cx + arc_radius * math.cos(end_angle)
                 y_end = cy - arc_radius * math.sin(end_angle)
-
-                # tangent direction along the arc
                 dx = -sign * arc_radius * math.sin(end_angle)
                 dy = -sign * arc_radius * math.cos(end_angle)
                 tangent_angle = math.atan2(dy, dx)
 
-                # --- arrowhead ---
                 arrow_size = 0.1 * arc_radius
-                alpha = math.pi / 6  # 30° wing angle
+                alpha = math.pi / 6
 
                 p1 = QPointF(
                     x_end - arrow_size * math.cos(tangent_angle - alpha),
@@ -213,8 +220,9 @@ class CmdVelScanViewer(QWidget):
         if self._scan is not None and self.scan_thresh > 0:
             painter.setPen(QPen(Qt.GlobalColor.red, 5))
             scale = r / self.scan_thresh  # threshold maps to circle radius
-            angle = self._scan.angle_min
-            angle = angle + math.pi / 2  # rotate to match viewer's angle
+            angle = (
+                self._scan.angle_min + math.pi / 2
+            )  # rotate to match viewer
             inc = (
                 self._scan.angle_increment
                 if self._scan.angle_increment != 0
@@ -231,7 +239,6 @@ class CmdVelScanViewer(QWidget):
                 a = angle + i * inc
                 if math.isfinite(rng) and rng >= rng_min:
                     if rng < self.scan_thresh and rng < rng_max:
-                        # Convert polar → pixel coords; +x right, +y up
                         px = cx + (rng * scale) * math.cos(a)
                         py = cy - (rng * scale) * math.sin(a)
                         painter.drawPoint(int(px), int(py))
@@ -244,16 +251,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Mobile Base Viewer")
         self.setWindowIcon(QIcon(os.path.join(ICONS_DIR, "astroviz_icon.png")))
 
-        self.setGeometry(100, 100, 500, 500)
+        self.setGeometry(100, 100, 520, 560)
 
         central = QWidget()
         self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
+        self._root = QVBoxLayout(central)
+        self._root.setContentsMargins(10, 10, 10, 10)
+        self._root.setSpacing(8)
 
-        self.cmd_vel_viewer = CmdVelScanViewer()
-        layout.addWidget(self.cmd_vel_viewer)
+        self.mobile_base_viewer = MobileBaseViewer()
+        self._root.addWidget(self.mobile_base_viewer, 1)
 
-        # --- Selectors (top-right) ---
+        # --- Selectors (top-right overlay) ---
         self.cmd_combo = QComboBox(self.centralWidget())
         self.cmd_combo.setFixedWidth(180)
         self.cmd_combo.currentTextChanged.connect(self.change_cmd_topic)
@@ -262,21 +271,46 @@ class MainWindow(QMainWindow):
         self.scan_combo.setFixedWidth(180)
         self.scan_combo.currentTextChanged.connect(self.change_scan_topic)
 
+        # ---------------- Bottom info row (Battery | Ping) ----------------
+        info_row = QHBoxLayout()
+        info_row.setSpacing(12)
+        self.lbl_batt = QLabel("Battery: —")
+        self.lbl_ping = QLabel("Ping: —")
+        for lbl in (self.lbl_batt, self.lbl_ping):
+            lbl.setAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+            lbl.setStyleSheet(
+                "QLabel { color: white; background: #2b2b2b; border: 1px solid #444; border-radius: 6px; padding: 6px 10px; }"
+            )
+        info_row.addWidget(self.lbl_batt, 1)
+        info_row.addWidget(self.lbl_ping, 1)
+        self._root.addLayout(info_row)
+
         # ROS params
-        try:
-            self.node.declare_parameter("scan_threshold", 1.0)
-        except Exception:
-            pass  # already declared
+        self.node.declare_parameter("max_x", 0.5)
+        self.node.declare_parameter("max_y", 0.5)
+        self.node.declare_parameter("max_yaw", 1.0)
+        self.node.declare_parameter("scan_threshold", 1.0)
+        self.node.declare_parameter("ping_host", "192.168.8.167")
+
         th = (
             self.node.get_parameter("scan_threshold").value
             if self.node.has_parameter("scan_threshold")
             else 1.0
         )
-        self.cmd_vel_viewer.set_scan_threshold(float(th))
+        self.mobile_base_viewer.set_scan_threshold(float(th))
 
         # Subscriptions
         self.twist_sub = None
         self.scan_sub = None
+        # Battery level as std_msgs/Int32 (0..100 or 0..1)
+        self.batt_sub = self.node.create_subscription(
+            Int32,
+            "/power/battery_level",
+            self._battery_cb,
+            QoSProfile(depth=1),
+        )
 
         self._populate_topics()
 
@@ -293,21 +327,34 @@ class MainWindow(QMainWindow):
 
         # Poll param in case changed externally
         self.param_timer = QTimer(self)
-        self.param_timer.timeout.connect(self._poll_scan_threshold_param)
-        self.param_timer.start(500)
+        self.param_timer.timeout.connect(self._poll_params)
+        self.param_timer.start(1000)
 
-        # Window update timer
-        self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: self.cmd_vel_viewer.update())
-        self.ros_timer.start(20)
+        # Ping timer
+        self.ping_timer = QTimer(self)
+        self.ping_timer.timeout.connect(self._update_ping)
+        self.ping_timer.start(2000)
 
-    def _poll_scan_threshold_param(self):
+        # Viewer refresh timer
+        self.refresh_timer = QTimer(self)
+        self.refresh_timer.timeout.connect(self.mobile_base_viewer.update)
+        self.refresh_timer.start(33)
+
+    # ---------------------- Param polling ----------------------
+    def _poll_params(self):
         try:
             p = self.node.get_parameter("scan_threshold").value
-            self.cmd_vel_viewer.set_scan_threshold(float(p))
+            self.mobile_base_viewer.set_scan_threshold(float(p))
+            p = self.node.get_parameter("max_x").value
+            self.mobile_base_viewer.set_max_x(float(p))
+            p = self.node.get_parameter("max_y").value
+            self.mobile_base_viewer.set_max_y(float(p))
+            p = self.node.get_parameter("max_yaw").value
+            self.mobile_base_viewer.set_max_yaw(float(p))
         except Exception:
             pass
 
+    # ---------------------- Overlays ----------------------
     def showEvent(self, event):
         super().showEvent(event)
         self._reposition_selectors()
@@ -320,16 +367,13 @@ class MainWindow(QMainWindow):
         margin = 5
         spacing = 6
         cw = self.centralWidget().width()
-        # place cmd combo at top-right
         x = cw - self.cmd_combo.width() - margin
         self.cmd_combo.move(x, margin)
-        # place scan combo below
         self.scan_combo.move(x, margin + self.cmd_combo.height() + spacing)
 
+    # ---------------------- Topics ----------------------
     def _populate_topics(self):
-        # Twist topics
         current_cmd = self.cmd_combo.currentText()
-        # LaserScan topics
         current_scan = self.scan_combo.currentText()
 
         all_topics = self.node.get_topic_names_and_types()
@@ -408,10 +452,47 @@ class MainWindow(QMainWindow):
 
     def _twist_cb(self, msg: Twist):
         x, y, yaw = msg.linear.x, msg.linear.y, msg.angular.z
-        self.cmd_vel_viewer.set_cmd_vel(x, y, yaw)
+        self.mobile_base_viewer.set_cmd_vel(x, y, yaw)
 
     def _scan_cb(self, msg: LaserScan):
-        self.cmd_vel_viewer.set_scan(msg)
+        self.mobile_base_viewer.set_scan(msg)
+
+    def _battery_cb(self, msg: Int32):
+        # Accept either 0..1 or 0..100 input
+        val = float(msg.data)
+        if val <= 1.5:
+            pct = val * 100.0
+        else:
+            pct = val
+        pct = max(0.0, min(100.0, pct))
+        self.lbl_batt.setText(f"Battery: {pct:.0f}%")
+
+    # ---------------------- Ping ----------------------
+    def _update_ping(self):
+        host = (
+            self.node.get_parameter("ping_host").value
+            if self.node.has_parameter("ping_host")
+            else "8.8.8.8"
+        )
+        try:
+            # Linux/Unix ping one packet with 1s timeout
+            proc = subprocess.run(
+                ["/bin/sh", "-c", f"ping -c 1 -W 1 {host}"],
+                capture_output=True,
+                text=True,
+                timeout=2.5,
+            )
+            out = proc.stdout + proc.stderr
+            m = re.search(r"time[=<]([0-9.]+)\s*ms", out)
+            print("out", out)
+            print("m", m)
+            if proc.returncode == 0 and m:
+                ms = float(m.group(1))
+                self.lbl_ping.setText(f"Ping {host}: {ms:.1f} ms")
+            else:
+                self.lbl_ping.setText(f"Ping {host}: timeout")
+        except Exception:
+            self.lbl_ping.setText(f"Ping {host}: error")
 
 
 def main(args=None):

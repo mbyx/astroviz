@@ -42,7 +42,7 @@ setup(
             "motor_state_viewer = astroviz.motor_state_viewer:main",
             "dummy_trajectories_publisher = astroviz.tools.dumy_trajectories:main",
             "gstreamer_shelfy_viewer = astroviz.gstreamer_shelfy_window:main",
-            "cmd_vel_viewer = astroviz.cmd_vel_window:main",
+            "mobile_base_viewer = astroviz.mobile_base_window:main",
             "tts_viewer = astroviz.tts_window:main",
             "audio_player_viewer = astroviz.audio_player_window:main",
             "shelfy_dashboard_viewer = astroviz.shelfy_dashboard_window:main",

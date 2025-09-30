@@ -12,7 +12,7 @@ SHELL ["/bin/bash", "-c"]
 ##### Install dependencies for the base system
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      curl gnupg2 lsb-release ca-certificates \
+      curl gnupg2 lsb-release ca-certificates iputils-ping \
       net-tools ntpdate v4l-utils terminator xvfb firefox \
       libgl1-mesa-dev libnss3 libx11-xcb1 libxcomposite1 libxrandr2 \
       libxcursor1 libxdamage1 libxtst6 libglib2.0-0 libgtk-3-0 \

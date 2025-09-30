@@ -19,7 +19,7 @@ import rclpy
 
 # Import your existing windows
 from astroviz.audio_player_window import MainWindow as AudioWindow
-from astroviz.cmd_vel_window import MainWindow as CmdVelWindow
+from astroviz.mobile_base_window import MainWindow as MobileBaseWindow
 from astroviz.camera_window import CameraViewer
 from astroviz.gstreamer_shelfy_window import (
     GstreamerWindow as ShelfyGstreamerWindow,
@@ -238,7 +238,7 @@ def main():
     # Build widgets
     gst_screen = GstreamerWindow(port=5004)
     camera_viewer = CameraViewer(node)
-    cmd_vel = CmdVelWindow(node)
+    cmd_vel = MobileBaseWindow(node)
     gst_webcam = ShelfyGstreamerWindow(port=5000, width=960, height=540)
     audio = AudioWindow(node)
     cafe_menu = CoffeeMenuWindow(node)
