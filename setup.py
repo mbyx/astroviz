@@ -46,6 +46,7 @@ setup(
             "tts_viewer = astroviz.tts_window:main",
             "audio_player_viewer = astroviz.audio_player_window:main",
             "shelfy_dashboard_viewer = astroviz.shelfy_dashboard_window:main",
+            "cafeteria_menu_viewer = astroviz.cafeteria_menu_window:main",
         ],
     },
 )

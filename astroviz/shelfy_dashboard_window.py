@@ -26,6 +26,7 @@ from astroviz.gstreamer_shelfy_window import (
     GstreamerWindow as ShelfyGstreamerWindow,
 )
 from astroviz.gstreamer_window import GstreamerWindow
+from astroviz.cafeteria_menu_window import MainWindow as CoffeeMenuWindow
 
 from ament_index_python.packages import get_package_share_directory
 from astroviz.common._find import _find_pkg, _find_src_config
@@ -247,14 +248,15 @@ def main():
     cmd_vel = CmdVelWindow(node)
     gst_webcam = ShelfyGstreamerWindow(port=5000, width=960, height=540)
     audio = AudioWindow(node)
+    cafe_menu = CoffeeMenuWindow(node)
 
     # Layout:
     # top_row: webcam, camera, cmd_vel
     host.add_widget(gst_webcam, row=0, col=0)
     host.add_widget(camera_viewer, row=0, col=1)
     host.add_widget(cmd_vel, row=0, col=2)
-    # bottom_row: empty, screen, audio
-    # (1,0) left empty intentionally
+    # bottom_row: coffe menu, screen, audio
+    host.add_widget(cafe_menu, row=1, col=0)
     host.add_widget(gst_screen, row=1, col=1)
     host.add_widget(audio, row=1, col=2)
 
