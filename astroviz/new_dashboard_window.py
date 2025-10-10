@@ -21,10 +21,8 @@ import rclpy
 from astroviz.audio_player_window import MainWindow as AudioWindow
 from astroviz.mobile_base_window import MainWindow as MobileBaseWindow
 from astroviz.camera_window import CameraViewer
-from astroviz.gstreamer_shelfy_window import (
-    GstreamerWindow as ShelfyGstreamerWindow,
-)
 from astroviz.gstreamer_window import GstreamerWindow
+from astroviz.tts_window import MainWindow as TTSWindow
 from astroviz.cafeteria_menu_window import MainWindow as CoffeeMenuWindow
 
 from ament_index_python.packages import get_package_share_directory
@@ -235,38 +233,35 @@ def main():
     host = MultiWindowHost(grid_shape=(2, 3))
     host.showMaximized()
 
+    predef_msgs = [
+        "Hello",
+        "Thanks",
+        "Goodbye",
+    ]
+
     # Build widgets
-    gst_screen = GstreamerWindow(port=5004)
+    gst = GstreamerWindow(port=5004)
     camera_viewer = CameraViewer(node)
-    cmd_vel = MobileBaseWindow(node)
-    gst_webcam = ShelfyGstreamerWindow(port=5000, width=960, height=540)
+    mb_base = MobileBaseWindow(node)
     audio = AudioWindow(node)
+    tts = TTSWindow(node, predef_msgs)
     cafe_menu = CoffeeMenuWindow(node)
 
     # Layout:
-    # top_row: webcam, camera, cmd_vel
-    host.add_widget(gst_webcam, row=0, col=0)
+    # top_row: gstreamer, camera, mb_base
+    host.add_widget(gst, row=0, col=0)
     host.add_widget(camera_viewer, row=0, col=1)
-    host.add_widget(cmd_vel, row=0, col=2)
-    # bottom_row: coffe menu, screen, audio
+    host.add_widget(mb_base, row=0, col=2)
+    # bottom_row: coffe menu, tts, audio
     host.add_widget(cafe_menu, row=1, col=0)
-    host.add_widget(gst_screen, row=1, col=1)
+    host.add_widget(tts, row=1, col=1)
     host.add_widget(audio, row=1, col=2)
 
-    # # Example: add the TTSWindow
-    # from astroviz.tts_window import MainWindow as TTSWindow
-    # predef_msgs = [
-    #     "Hello, I'm Shelfy!",
-    #     "Please, fill your order by pressing the buttons.",
-    #     "Please, load the order you see on the screen.",
-    # ]
-    # host.add_widget(TTSWindow(node, predef_msgs), row=1, col=2)
-
     # Optional initial sizes:
-    host.set_col_sizes([1, 1, 1])  # global columns
-    host.set_row_sizes_for_column(0, [1, 1])  # webcam column
-    host.set_row_sizes_for_column(1, [1, 1])  # camera/screen column
-    host.set_row_sizes_for_column(2, [1, 1])  # cmd_vel/audio column
+    host.set_col_sizes([1, 1, 1])
+    host.set_row_sizes_for_column(0, [1, 1])
+    host.set_row_sizes_for_column(1, [1, 1])
+    host.set_row_sizes_for_column(2, [1, 1])
 
     host.show()
     app.exec()
