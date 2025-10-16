@@ -12,12 +12,13 @@ SHELL ["/bin/bash", "-c"]
 ##### Install dependencies for the base system
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      curl gnupg2 lsb-release ca-certificates \
+      curl gnupg2 lsb-release ca-certificates iputils-ping \
       net-tools ntpdate v4l-utils terminator xvfb firefox \
       libgl1-mesa-dev libnss3 libx11-xcb1 libxcomposite1 libxrandr2 \
       libxcursor1 libxdamage1 libxtst6 libglib2.0-0 libgtk-3-0 \
       libxcb-util1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 \
       libxcb-keysyms1 libxcb-image0 libxcb-randr0 libxcb-xtest0 \
+      libxkbcommon-x11-0 libxrender1 libxext6 libsm6 libxi6 libglu1-mesa \
       libxcb-cursor0 libasound2 libproj-dev libgeos-dev python3-gi-cairo && \
     rm -rf /var/lib/apt/lists/*
 
@@ -54,7 +55,6 @@ RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /etc/bash.bashrc
 RUN pip install --upgrade "pybind11>=2.12" "numpy<2"
 RUN pip install urdfpy PyQt6-Charts
 
-
 RUN mkdir -p /ros2_ws/src
 
 RUN  apt update
@@ -75,7 +75,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gst-inspect-1.0 > /dev/null && \
     rm -rf /var/lib/apt/lists/*
 
+# Install cyclone-dds
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \   
+    && rm -rf /var/lib/apt/lists/*
+
+# Install zenoh
+RUN curl -L https://download.eclipse.org/zenoh/debian-repo/zenoh-public-key | sudo gpg --dearmor --yes --output /etc/apt/keyrings/zenoh-public-key.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/zenoh-public-key.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee -a /etc/apt/sources.list > /dev/null
+RUN apt-get update && apt-get install zenoh-bridge-ros2dds -y
+
+# Set-up ROS 2 workspace
 WORKDIR /ros2_ws/src
 RUN git clone https://github.com/CDonosoK/astroviz_interfaces.git
+
+# For Shelfy dashboard
+RUN git clone https://gitlab.inria.fr/pepr-o2r-as3/custom_ros_interfaces/audio_common_msgs.git
+RUN git clone --branch features-from-shelfy --single-branch https://github.com/hucebot/astroviz.git
+WORKDIR /ros2_ws
+RUN source /opt/ros/$ROS_DISTRO/setup.bash \
+  && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+RUN echo "source /ros2_ws/install/setup.bash" >> /etc/bash.bashrc
 
 CMD ["bash"]
