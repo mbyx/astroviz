@@ -92,7 +92,7 @@ This package nodes that are designed to facilitate teleoperation and visualizati
 - **grid_map_viewer**: Visualizes grid map data for navigation and planning.
 - **robot_state_viewer**: Displays the current state of the robot related to the joint positions and transformations.
 - **motor_state_viewer**: Monitors and visualizes the state of the robot's motors, including temperature and voltage readings.
-
+- **record_manager_viewer**: Manages and visualizes recording sessions, allowing users to start, stop, and review recordings.
 
 ### Running Nodes
 To run the nodes, you can use the following command:
