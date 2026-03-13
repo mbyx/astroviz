@@ -76,6 +76,14 @@ Once built, launch the container using:
 ```bash
 sh run.sh
 ```
+Then if you want to run the dashboard, use:
+```bash
+colcon build
+```
+And then:
+```bash
+ros2 run astroviz dashboard_viewer
+```
 ---
 
 ## Usage

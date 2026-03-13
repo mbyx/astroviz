@@ -91,7 +91,7 @@ RUN git clone https://github.com/CDonosoK/astroviz_interfaces.git
 
 # For Shelfy dashboard
 RUN git clone https://gitlab.inria.fr/pepr-o2r-as3/custom_ros_interfaces/audio_common_msgs.git
-RUN git clone --branch features-from-shelfy --single-branch https://github.com/hucebot/astroviz.git
+RUN git clone --single-branch https://github.com/hucebot/astroviz.git
 WORKDIR /ros2_ws
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release

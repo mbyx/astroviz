@@ -28,7 +28,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            #'dashboard_viewer = astroviz.dashboard_window:main', #WORKING BUT NEED TO IMPROVE THE RENDERING
+            'dashboard_viewer = astroviz.dashboard_window:main', #WORKING BUT NEED TO IMPROVE THE RENDERING
             "gps_map_viewer = astroviz.gps_map_window:main",
             "camera_viewer = astroviz.camera_window:main",
             "lidar_viewer = astroviz.lidar_window:main",
