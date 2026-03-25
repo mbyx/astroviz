@@ -110,7 +110,7 @@ ros2 launch astroviz dashboard_launcher.launch.py
 This package is maintained by:
 
 **Clemente Donoso**  
-Email: [clemente.donoso@inria.fr](mailto:clemente.donoso@inria.fr)
+Email: [clemente.donosok@gmail.com](mailto:clemente.donosok@gmail.com)
 GitHub: [CDonosoK](https://github.com/CDonosoK)  
 
 ---
