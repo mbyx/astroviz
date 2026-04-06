@@ -92,6 +92,26 @@ RUN git clone https://github.com/CDonosoK/astroviz_interfaces.git
 # For Shelfy dashboard
 RUN git clone https://gitlab.inria.fr/pepr-o2r-as3/custom_ros_interfaces/audio_common_msgs.git
 RUN git clone --single-branch https://github.com/hucebot/astroviz.git
+
+RUN mkdir -p /etc/apt/keyrings && \
+  apt-get update && apt-get install -y --no-install-recommends curl gnupg2 ca-certificates && \
+  curl -sSf https://librealsense.realsenseai.com/Debian/librealsenseai.asc | \
+  gpg --dearmor -o /etc/apt/keyrings/librealsenseai.gpg
+
+RUN apt-get update && apt-get install -y --no-install-recommends apt-transport-https && \
+  echo "deb [signed-by=/etc/apt/keyrings/librealsenseai.gpg] https://librealsense.realsenseai.com/Debian/apt-repo jammy main" \
+  > /etc/apt/sources.list.d/librealsense.list
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  librealsense2-utils \
+  librealsense2-dev \
+  librealsense2-dbg \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ros-humble-realsense2-camera \
+  ros-humble-realsense2-description
+
 WORKDIR /ros2_ws
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release

@@ -3,5 +3,9 @@
     "python.autoComplete.extraPaths": [
         "/home/cdonoso/ros2_ws/install/ros2_streamer/lib/python3.12/site-packages",
         "/opt/ros/rolling/lib/python3.12/site-packages"
+    ],
+    "ROS2.distro": "jazzy",
+    "python.analysis.extraPaths": [
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
     ]
 }
