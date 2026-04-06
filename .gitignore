@@ -4,6 +4,9 @@
 ### - ROS -
 /maps
 /rosbags 
+build/
+install/
+log/
 
 ### - Python -
 *.pyc
