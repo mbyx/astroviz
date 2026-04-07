@@ -182,9 +182,15 @@ class CameraViewer(QMainWindow):
         try:
             msg_name = msg.__class__.__name__
             if msg_name == "Image":
-                cv_image = self.bridge.imgmsg_to_cv2(
-                    msg, desired_encoding="bgr8"
-                )
+                # Depth images by the realsense camera use 16UC1 encoding.
+                if msg.encoding == "16UC1":
+                    # Convert to 16-bit mono and then scale to 8-bit for display
+                    cv_raw = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+                    # NOTE: May want to modify this line as needed.
+                    cv_image = cv2.normalize(cv_raw, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+                else:
+                    cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+
             if msg_name == "CompressedImage":
                 cv_image = self.bridge.compressed_imgmsg_to_cv2(msg)
 
@@ -195,15 +201,24 @@ class CameraViewer(QMainWindow):
             elif self.rotation_angle == 270:
                 cv_image = cv2.rotate(cv_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            height, width, channel = cv_image.shape
-            bytes_per_line = 3 * width
+            # Change format of image according to whether it's a depth image or not.
+            if len(cv_image.shape) == 3:
+                height, width, channel = cv_image.shape
+                bytes_per_line = channel * width
+                q_format = QImage.Format.Format_BGR888
+            else:
+                height, width = cv_image.shape
+                bytes_per_line = width
+                q_format = QImage.Format.Format_Grayscale8
+
             q_image = QImage(
                 cv_image.data,
                 width,
                 height,
                 bytes_per_line,
-                QImage.Format.Format_BGR888,
+                q_format,
             )
+
             pixmap = QPixmap.fromImage(q_image)
             self.image_label.setPixmap(
                 pixmap.scaled(
