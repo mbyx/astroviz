@@ -8,6 +8,7 @@ import os
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
+    QSizePolicy,
     QWidget,
     QVBoxLayout,
     QLabel,
@@ -27,6 +28,7 @@ from ament_index_python.packages import get_package_share_directory
 
 
 from astroviz.utils.window_style import DarkStyle
+from astroviz.utils.heatmap_scale import DepthScaleControl
 from astroviz.common._find import _find_pkg, _find_src_config
 
 _src_config = _find_src_config()
@@ -48,6 +50,10 @@ os.makedirs(_CONFIG_DIR, exist_ok=True)
 
 CONFIG_PATH = os.path.join(_CONFIG_DIR, "dashboard_config.json")
 ICONS_DIR = os.path.join(_PKG_DIR, "icons")
+
+# Based on the optimum distance for a realsense 435i camera.
+MIN_DISTANCE_MM = 300
+MAX_DISTANCE_MM = 3000
 
 
 def get_image_topic_type(node: Node, topic_name: str) -> str | None:
@@ -96,9 +102,19 @@ class CameraViewer(QMainWindow):
         self.combo.currentTextChanged.connect(self.change_image_topic)
         self.layout.addWidget(self.combo, alignment=Qt.AlignmentFlag.AlignLeft)
 
+        content_layout = QHBoxLayout()
+
         self.image_label = QLabel("Waiting for image...")
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(self.image_label)
+        self.image_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding);
+
+        self.depth_scale = DepthScaleControl(min_dist=MIN_DISTANCE_MM/1000.0, max_dist=MAX_DISTANCE_MM/1000.0)
+        self.depth_scale.hide()
+
+        content_layout.addWidget(self.image_label)
+        content_layout.addWidget(self.depth_scale)
+
+        self.layout.addLayout(content_layout)
 
         btn_layout = QHBoxLayout()
         self.btn_left = QPushButton("⟲ 90° Left")
@@ -178,21 +194,44 @@ class CameraViewer(QMainWindow):
             QoSProfile(depth=10),
         )
 
+    def _get_color_bar_pixmap(self, height: int, width: int = 40):
+        gradient = np.linspace(255, 0, height).astype(np.uint8).reshape(-1, 1)
+        bar_gray = np.tile(gradient, (1, width))
+        bar_color = cv2.applyColorMap(bar_gray, cv2.COLORMAP_JET)
+        h, w, c = bar_color.shape
+        q_img = QImage(bar_color.data, w, h, w * c, QImage.Format.Format_BGR888)
+        return QPixmap.fromImage(q_img)
+
     def image_callback(self, msg: Image | CompressedImage):
+        """Attempts to create a viewable image from given Image message
+
+        Although the message is of the Image type, due to differences in
+        encoding, sometimes it is not feasible to show an image in the same
+        way for every type of image. For example, a depth image can incorporate
+        the depth into every pixel, which causes a different image encoding
+        to be used. This encoding may be better visualized using a heatmap,
+        which is what this method does."""
         try:
             msg_name = msg.__class__.__name__
-            if msg_name == "Image":
-                # Depth images by the realsense camera use 16UC1 encoding.
-                if msg.encoding == "16UC1":
-                    # Convert to 16-bit mono and then scale to 8-bit for display
-                    cv_raw = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-                    # NOTE: May want to modify this line as needed.
-                    cv_image = cv2.normalize(cv_raw, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-                else:
-                    cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
             if msg_name == "CompressedImage":
-                cv_image = self.bridge.compressed_imgmsg_to_cv2(msg)
+                cv_raw = self.bridge.compressed_imgmsg_to_cv2(msg)
+            else:
+                cv_raw = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+
+            # This encoding is used by depth images.
+            if msg.encoding == "16UC1":
+                # The points are clipped to the optimum distance.
+                cv_clipped = np.clip(cv_raw, MIN_DISTANCE_MM, MAX_DISTANCE_MM)
+                # Scale the depth values to correspond to a grayscale color.
+                alpha = 255.0 / (MAX_DISTANCE_MM - MIN_DISTANCE_MM)
+                gray_8bit = cv2.convertScaleAbs(cv_clipped - MIN_DISTANCE_MM, alpha=alpha)
+                # Create a heatmap from the grayscale mapping.
+                cv_image = cv2.applyColorMap(gray_8bit, cv2.COLORMAP_JET)
+                self.depth_scale.show()
+            else:
+                cv_image = cv_raw
+                self.depth_scale.hide()
 
             if self.rotation_angle == 90:
                 cv_image = cv2.rotate(cv_image, cv2.ROTATE_90_CLOCKWISE)
@@ -201,7 +240,8 @@ class CameraViewer(QMainWindow):
             elif self.rotation_angle == 270:
                 cv_image = cv2.rotate(cv_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            # Change format of image according to whether it's a depth image or not.
+            # Format detection for QImage
+            # After applyColorMap, depth images now have 3 channels (BGR)
             if len(cv_image.shape) == 3:
                 height, width, channel = cv_image.shape
                 bytes_per_line = channel * width
