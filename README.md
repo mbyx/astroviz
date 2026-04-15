@@ -56,7 +56,7 @@ To run this package, ensure the following dependencies are installed:
 #### Clone the Repository
 Start by cloning the repository:
 ```bash
-git clone git@github.com:hucebot/astroviz.git
+git clone git@github.com:mbyx/astroviz.git
 ```
 
 #### Build Using Docker
@@ -111,8 +111,10 @@ Replace `<node_name>` with the name of the node you wish to run, such as `gps_ma
 
 Or if you prefer to run the dashboard viewer, which integrates all functionalities:
 ```bash
-ros2 launch astroviz dashboard_launcher.launch.py
+ros2 launch astroviz astroviz.launch.py
 ```
+### Creating Custom Windows
+To create custom windows, create a new file in the `astroviz/` directory, based off of the `test_window.py` file. Then in `astroviz/utils/windows_implemented.py`, add the window to the `VIEW_TYPES` dictionary, and then in `setup.py`, add the entry point to the console scripts.
 
 ## Maintainer
 This package is maintained by:

@@ -4,9 +4,11 @@ docker context use default
 isRunning=`docker ps -f name=astroviz | grep -c "astroviz"`;
 
 if [ $isRunning -eq 0 ]; then
+    # Allow showing GUIs locally from docker.
     xhost +local:docker
     docker rm -f astroviz 2>/dev/null || true
-    
+
+    # FIXME(docker): This is quite unsafe, preferably change to be more secure.
     docker run \
         --name astroviz \
         -it \

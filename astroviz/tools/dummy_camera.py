@@ -18,8 +18,8 @@ class MockRealSenseNode(Node):
         super().__init__('mock_realsense_node')
 
         # RealSense D435i standard topics
-        self.depth_pub = self.create_publisher(Image, '/camera/depth/image_rect_raw', 10)
-        self.color_pub = self.create_publisher(Image, '/camera/color/image_raw', 10)
+        self.depth_pub = self.create_publisher(Image, '/camera_mock/depth/image_rect_raw', 10)
+        self.color_pub = self.create_publisher(Image, '/camera_mock/color/image_raw', 10)
 
         self.timer = self.create_timer(1.0 / FPS, self.timer_callback)
         self.bridge = CvBridge()

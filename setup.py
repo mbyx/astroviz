@@ -15,7 +15,7 @@ setup(
         (
             f"share/{package_name}/launch",
             [
-                "launch/dashboard_launcher.launch.py",
+                "launch/astroviz.launch.py",
             ],
         ),
     ],
@@ -48,6 +48,7 @@ setup(
             "cafeteria_menu_viewer = astroviz.cafeteria_menu_window:main",
             "record_manager_viewer = astroviz.record_manager_window:main",
             "test_window = astroviz.test_window:main",
+            'dummy_camera_publisher = astroviz.tools.dummy_camera:main',
         ],
     },
 )

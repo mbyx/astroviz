@@ -28,16 +28,14 @@ from ament_index_python.packages import get_package_share_directory
 
 
 from astroviz.utils.window_style import DarkStyle
-from astroviz.utils.heatmap_scale import DepthScaleControl
+from astroviz.utils.heatmap_scale import HeatmapScaleControl
 from astroviz.common._find import _find_pkg, _find_src_config
 
 _src_config = _find_src_config()
 if _src_config:
     _CONFIG_DIR = _src_config
 else:
-    _CONFIG_DIR = os.path.join(
-        get_package_share_directory("astroviz"), "config"
-    )
+    _CONFIG_DIR = os.path.join(get_package_share_directory("astroviz"), "config")
 
 
 _pkg = _find_pkg()
@@ -106,9 +104,13 @@ class CameraViewer(QMainWindow):
 
         self.image_label = QLabel("Waiting for image...")
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding);
+        self.image_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
 
-        self.depth_scale = DepthScaleControl(min_dist=MIN_DISTANCE_MM/1000.0, max_dist=MAX_DISTANCE_MM/1000.0)
+        self.depth_scale = HeatmapScaleControl(
+            min_dist=MIN_DISTANCE_MM / 1000.0, max_dist=MAX_DISTANCE_MM / 1000.0
+        )
         self.depth_scale.hide()
 
         content_layout.addWidget(self.image_label)
@@ -119,17 +121,13 @@ class CameraViewer(QMainWindow):
         btn_layout = QHBoxLayout()
         self.btn_left = QPushButton("⟲ 90° Left")
         self.btn_left.clicked.connect(self.rotate_left)
-        btn_layout.addWidget(
-            self.btn_left, alignment=Qt.AlignmentFlag.AlignLeft
-        )
+        btn_layout.addWidget(self.btn_left, alignment=Qt.AlignmentFlag.AlignLeft)
 
         btn_layout.addStretch()
 
         self.btn_right = QPushButton("90° Right ⟳")
         self.btn_right.clicked.connect(self.rotate_right)
-        btn_layout.addWidget(
-            self.btn_right, alignment=Qt.AlignmentFlag.AlignRight
-        )
+        btn_layout.addWidget(self.btn_right, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.layout.addLayout(btn_layout)
 
@@ -215,19 +213,54 @@ class CameraViewer(QMainWindow):
             msg_name = msg.__class__.__name__
 
             if msg_name == "CompressedImage":
-                cv_raw = self.bridge.compressed_imgmsg_to_cv2(msg)
+                cv_raw = self.bridge.compressed_imgmsg_to_cv2(
+                    msg, desired_encoding="rgb8"
+                )
             else:
-                cv_raw = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+                if msg.encoding == "16UC1":
+                    cv_raw = self.bridge.imgmsg_to_cv2(
+                        msg, desired_encoding="passthrough"
+                    )
+                else:
+                    cv_raw = self.bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
 
             # This encoding is used by depth images.
             if msg.encoding == "16UC1":
-                # The points are clipped to the optimum distance.
-                cv_clipped = np.clip(cv_raw, MIN_DISTANCE_MM, MAX_DISTANCE_MM)
-                # Scale the depth values to correspond to a grayscale color.
-                alpha = 255.0 / (MAX_DISTANCE_MM - MIN_DISTANCE_MM)
-                gray_8bit = cv2.convertScaleAbs(cv_clipped - MIN_DISTANCE_MM, alpha=alpha)
-                # Create a heatmap from the grayscale mapping.
-                cv_image = cv2.applyColorMap(gray_8bit, cv2.COLORMAP_JET)
+                if self.depth_scale.heatmap_type.currentText().lower() == "depth":
+                    # The points are clipped to the optimum distance.
+                    cv_clipped = np.clip(cv_raw, MIN_DISTANCE_MM, MAX_DISTANCE_MM)
+                    # Scale the depth values to correspond to a grayscale color.
+                    alpha = 255.0 / (MAX_DISTANCE_MM - MIN_DISTANCE_MM)
+                    gray_8bit = cv2.convertScaleAbs(
+                        cv_clipped - MIN_DISTANCE_MM, alpha=alpha
+                    )
+                    gray_8bit_blurred = cv2.medianBlur(gray_8bit, 3)
+
+                    # Create a heatmap from the grayscale mapping.
+                    cv_image_bgr = cv2.applyColorMap(
+                        gray_8bit_blurred, cv2.COLORMAP_JET
+                    )
+                    cv_image = cv2.cvtColor(cv_image_bgr, cv2.COLOR_RGB2BGR)
+                elif self.depth_scale.heatmap_type.currentText().lower() == "disparity":
+                    depth_safe = np.maximum(cv_raw, 1.0)
+
+                    # 'baseline_focal_constant' = baseline (mm) * focal_length (pixels)
+                    baseline_focal_constant = 32000
+                    disparity = baseline_focal_constant / depth_safe
+
+                    MIN_DISP, MAX_DISP = 0, 128
+                    disp_clipped = np.clip(disparity, MIN_DISP, MAX_DISP)
+
+                    alpha = 255.0 / (MAX_DISP - MIN_DISP)
+                    gray_8bit = cv2.convertScaleAbs(
+                        disp_clipped - MIN_DISP, alpha=alpha
+                    )
+
+                    gray_8bit_blurred = cv2.medianBlur(gray_8bit, 3)
+                    cv_image_bgr = cv2.applyColorMap(
+                        gray_8bit_blurred, cv2.COLORMAP_JET
+                    )
+                    cv_image = cv2.cvtColor(cv_image_bgr, cv2.COLOR_RGB2BGR)
                 self.depth_scale.show()
             else:
                 cv_image = cv_raw
@@ -241,11 +274,10 @@ class CameraViewer(QMainWindow):
                 cv_image = cv2.rotate(cv_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
             # Format detection for QImage
-            # After applyColorMap, depth images now have 3 channels (BGR)
             if len(cv_image.shape) == 3:
                 height, width, channel = cv_image.shape
                 bytes_per_line = channel * width
-                q_format = QImage.Format.Format_BGR888
+                q_format = QImage.Format.Format_RGB888
             else:
                 height, width = cv_image.shape
                 bytes_per_line = width

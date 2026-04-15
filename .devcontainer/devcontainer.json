@@ -26,5 +26,5 @@
             ]
         }
     },
-    "postCreateCommand": "colcon build && echo 'source /workspaces/astroviz/install/setup.bash' >> ~/.bashrc",
+    "postCreateCommand": "colcon build --symlink-install && echo 'source /workspaces/astroviz/install/setup.bash' >> ~/.bashrc"
 }
