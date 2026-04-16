@@ -122,7 +122,7 @@ class HeatmapScaleControl(QWidget):
 
         # Generate a vertical gradient (0-255)
         # Note: 0 is Blue (cold/far), 255 is Red (hot/near)
-        gradient = np.linspace(0, 255, height).astype(np.uint8).reshape(-1, 1)
+        gradient = np.linspace(255, 0, height).astype(np.uint8).reshape(-1, 1)
         bar_gray = np.tile(gradient, (1, width))
         bar_color = cv2.applyColorMap(bar_gray, cv2.COLORMAP_JET)
 

@@ -45,11 +45,12 @@ def generate_launch_description():
                     "enable_infra2": "true",
                     # Post-processing Filters.
                     "decimation_filter.enable": "true",
-                    "decimation_filter.filter_magnitude": "1",
+                    "decimation_filter.filter_magnitude": "2",
                     "hdr_merge.enable": "true",
                     "spatial_filter.enable": "true",
                     "temporal_filter.enable": "true",
                     "hole_filling_filter.enable": "true",
+                    "diagnostics_period": "1.0",
                 }.items(),
             ),
             Node(
