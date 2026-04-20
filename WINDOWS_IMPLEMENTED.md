@@ -15,3 +15,14 @@ This document lists all the GUI windows currently available in the `astroviz` pa
 | Robot State Viewer   | ![Robot State](images/robot_state_viewer.png)                                 | Displays the robot's state, including joint positions and visual meshes.    |
 | Motor State Viewer | ![Motor State](images/motor_state_viewer.png)                                 | Displays the state of the robot's motors, including temperature and voltage. |
 | Record Manager Viewer | ![Record Manager](images/record_manager_viewer.png)                         | Easy management for recording sessions |
+
+# Topics Used
+This lists all of the topics each window listens for.
+- Camera: All topics with the `Image`/`CompressedImage` type.
+- AudioPlayer: All topics with the `AudioStamped` type.
+- GPSMap: All topics with the `NavSatFix` type.
+- GridMap: All topics with the `OccupancyGrid` type. It also publishes waypoints with the `Path` type.
+- IMU: All topics with the `Imu` type.
+- Lidar: All topics with the `PointCloud2` type.
+- PlotWindow: All topics with the `BatteryState` type.
+
