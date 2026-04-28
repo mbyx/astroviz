@@ -38,11 +38,16 @@ def generate_launch_description():
                     # Profiles and Hardware.
                     "depth_module.depth_profile": "848x480x30",
                     "rgb_camera.color_profile": "848x480x30",
+                    "depth_module.infra_profile": "848x480x30",
                     # Hardware/Software enables.
                     "align_depth.enable": "true",
-                    "pointcloud.enable": "true",
                     "enable_infra1": "true",
                     "enable_infra2": "true",
+                    "enable_depth": "true",
+
+                    "pointcloud.enable": "true",
+                    "pointcloud.stream_filter": "1",
+                    "pointcloud.stream_index_filter": "1",
                     # Post-processing Filters.
                     "decimation_filter.enable": "true",
                     "decimation_filter.filter_magnitude": "2",

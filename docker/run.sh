@@ -17,6 +17,7 @@ if [ $isRunning -eq 0 ]; then
         --privileged \
         --env DISPLAY=$DISPLAY \
         --env QT_X11_NO_MITSHM=1 \
+        --env ROS_DOMAIN_ID=42 \
         --device /dev/dri:/dev/dri \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v `pwd`/../:/ros2_ws/src/astroviz \

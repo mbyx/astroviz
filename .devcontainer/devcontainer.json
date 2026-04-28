@@ -17,7 +17,8 @@
     ],
     "containerEnv": {
         "DISPLAY": "${localEnv:DISPLAY}",
-        "QT_X11_NO_MITSHM": "1"
+        "QT_X11_NO_MITSHM": "1",
+        "ROS_DOMAIN_ID": "42"
     },
     "customizations": {
         "vscode": {
