@@ -225,7 +225,8 @@ class CameraViewer(QMainWindow):
                     cv_raw = self.bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
 
             # This encoding is used by depth images.
-            if msg.encoding == "16UC1":
+            # NOTE: We only support depth images that are uncompressed.
+            if msg_name != "CompressedImage" and msg.encoding == "16UC1":
                 if self.depth_scale.heatmap_type.currentText().lower() == "depth":
                     # The points are clipped to the optimum distance.
                     cv_clipped = np.clip(cv_raw, MIN_DISTANCE_MM, MAX_DISTANCE_MM)

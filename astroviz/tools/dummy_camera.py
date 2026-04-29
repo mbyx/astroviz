@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CompressedImage
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
@@ -20,6 +20,7 @@ class MockRealSenseNode(Node):
         # RealSense D435i standard topics
         self.depth_pub = self.create_publisher(Image, '/camera_mock/depth/image_rect_raw', 10)
         self.color_pub = self.create_publisher(Image, '/camera_mock/color/image_raw', 10)
+        self.color_compressed_pub = self.create_publisher(CompressedImage, '/camera_mock/color/image_compressed', 10);
 
         self.timer = self.create_timer(1.0 / FPS, self.timer_callback)
         self.bridge = CvBridge()
@@ -50,8 +51,14 @@ class MockRealSenseNode(Node):
         color_msg.header.stamp = now
         color_msg.header.frame_id = "camera_color_optical_frame"
 
+        color_compressed_img = cv2.applyColorMap(img_8bit, cv2.COLORMAP_JET)
+        color_compressed_msg = self.bridge.cv2_to_compressed_imgmsg(color_compressed_img)
+        color_compressed_msg.header.stamp = now
+        color_compressed_msg.header.frame_id = "camera_color_optical_frame"
+
         self.depth_pub.publish(depth_msg)
         self.color_pub.publish(color_msg)
+        self.color_compressed_pub.publish(color_compressed_msg);
 
 
 def main(args=None):
