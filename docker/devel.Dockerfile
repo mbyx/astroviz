@@ -112,9 +112,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ros-humble-realsense2-camera \
   ros-humble-realsense2-description
 
+RUN apt-get update && apt-get install ros-humble-geographic-msgs \
+  ros-humble-zed-msgs \
+  ros-humble-point-cloud-interfaces \
+  ros-humble-ffmpeg-image-transport-msgs
+
+
 WORKDIR /ros2_ws
 RUN source /opt/ros/$ROS_DISTRO/setup.bash \
   && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+RUN colcon build --symlink-install --packages-select rslidar_msg --base-paths . src
 
 RUN echo "source /ros2_ws/install/setup.bash" >> /etc/bash.bashrc
 

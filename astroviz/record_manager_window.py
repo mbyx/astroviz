@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import signal
 import sys, os, subprocess, datetime, shutil
 import rclpy
 from rclpy.node import Node
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
+    QApplication, QFileDialog, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
     QHBoxLayout, QHeaderView, QAbstractItemView, QTextEdit,
     QPushButton, QLineEdit, QLabel, QSizePolicy, QMessageBox
 )
@@ -22,9 +23,12 @@ class RecordManagerViewer(QWidget):
 
         self.selected_topics = set()
         self.is_recording = False
+        self.is_playing = False
         self.all_topics = []
         self.record_process = None
+        self.play_process = None
         self.current_bag_path = None
+        self.selected_bag_to_play = None
 
         main_layout = QVBoxLayout(self)
 
@@ -39,18 +43,24 @@ class RecordManagerViewer(QWidget):
         self.btn_record = QPushButton("Record")
         self.btn_stop = QPushButton("Stop")
         self.btn_delete = QPushButton("Delete Last")
+        self.btn_load = QPushButton("Load")
+        self.btn_play = QPushButton("Play")
         self.size_label = QLabel("Size: --")
         self.size_label.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
 
-        for btn in [self.btn_record, self.btn_stop, self.btn_delete]:
+        for btn in [self.btn_record, self.btn_stop, self.btn_delete, self.btn_load, self.btn_play]:
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             button_layout.addWidget(btn, 1)
 
         button_layout.addWidget(self.size_label, 1)
 
+        self.btn_play.setEnabled(False)
+        self.btn_load.clicked.connect(self.load_bagfile)
+        self.btn_play.clicked.connect(self.play_bagfile)
+
         self.btn_stop.setEnabled(False)
         self.btn_record.clicked.connect(self.start_recording)
-        self.btn_stop.clicked.connect(self.stop_recording)
+        self.btn_stop.clicked.connect(self.stop_process)
         self.btn_delete.clicked.connect(self.delete_last_record)
         main_layout.addLayout(button_layout)
 
@@ -84,8 +94,29 @@ class RecordManagerViewer(QWidget):
         self.size_timer.start(1000)
 
         self.default_record_style = self.btn_record.styleSheet()
-        self.rosbag_dir = "/ros2_ws/src/astroviz/rosbags"
+        self.rosbag_dir = "/workspaces/astroviz/rosbags"
         os.makedirs(self.rosbag_dir, exist_ok=True)
+
+    def load_bagfile(self):
+        bag_dir = QFileDialog.getExistingDirectory(self, "Select Bag Directory", self.rosbag_dir)
+        if bag_dir:
+            self.selected_bag_to_play = bag_dir
+            self.btn_play.setEnabled(True)
+            self.node.get_logger().info(f"Loaded bag: {bag_dir}")
+
+    def play_bagfile(self):
+        if not self.selected_bag_to_play or self.is_playing:
+            return
+
+        cmd = ["ros2", "bag", "play", self.selected_bag_to_play]
+        self.play_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.is_playing = True
+        
+        self.btn_play.setEnabled(False)
+        self.btn_record.setEnabled(False)
+        self.btn_load.setEnabled(False)
+        self.btn_stop.setEnabled(True)
+        self.node.get_logger().info(f"Playing bag: {self.selected_bag_to_play}")
 
     def start_recording(self):
         if self.is_recording:
@@ -103,11 +134,10 @@ class RecordManagerViewer(QWidget):
             QMessageBox.warning(self, "Already Exists", f"The bag '{name}' already exists in rosbag/.")
             return
 
-        os.makedirs(bag_path, exist_ok=False)
         self.current_bag_path = bag_path
 
         cmd = ["ros2", "bag", "record", "-o", bag_path] + list(self.selected_topics)
-        print(f"Recording: {' '.join(cmd)}")
+        self.node.get_logger().info(f"Recording: {' '.join(cmd)}")
 
         self.record_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.is_recording = True
@@ -124,18 +154,25 @@ class RecordManagerViewer(QWidget):
             }
         """)
         self.btn_record.setEnabled(False)
+        self.btn_play.setEnabled(False)
+        self.btn_load.setEnabled(False)
         self.btn_stop.setEnabled(True)
 
-        print(f"Recording topics {', '.join(self.selected_topics)}")
-        print(f"Path: {bag_path}")
+        self.node.get_logger().info(f"Recording topics {', '.join(self.selected_topics)}")
+        self.node.get_logger().info(f"Path: {bag_path}")
+
+    def stop_process(self):
+        if self.is_recording:
+            self.stop_recording()
+        elif self.is_playing:
+            self.stop_playback()
 
     def stop_recording(self):
         if not self.is_recording or not self.record_process:
             return
 
-        print("Stopping recording...")
-
-        self.record_process.terminate()
+        self.node.get_logger().info("Stopping recording...")
+        self.record_process.send_signal(signal.SIGINT)
         try:
             self.record_process.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -144,10 +181,31 @@ class RecordManagerViewer(QWidget):
         self.record_process = None
         self.is_recording = False
         self.btn_record.setEnabled(True)
+        self.btn_load.setEnabled(True)
+        self.btn_play.setEnabled(True if self.selected_bag_to_play else False)
         self.btn_stop.setEnabled(False)
         self.btn_record.setStyleSheet(self.default_record_style)
         self.size_label.setText("Size: --")
-        print("Recording stopped.")
+        self.node.get_logger().info("Recording stopped.")
+
+    def stop_playback(self):
+        if not self.is_playing or not self.play_process:
+            return
+
+        self.node.get_logger().info("Stopping playback...")
+        self.play_process.send_signal(signal.SIGINT)
+        try:
+            self.play_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.play_process.kill()
+
+        self.play_process = None
+        self.is_playing = False
+        self.btn_play.setEnabled(True)
+        self.btn_record.setEnabled(True)
+        self.btn_load.setEnabled(True)
+        self.btn_stop.setEnabled(False)
+        self.node.get_logger().info("Playback stopped.")
 
     def delete_last_record(self):
         bags = sorted(

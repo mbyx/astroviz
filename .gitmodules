@@ -1,0 +1,3 @@
+[submodule "src/rslidar_msg"]
+	path = src/rslidar_msg
+	url = https://github.com/RoboSense-LiDAR/rslidar_msg
