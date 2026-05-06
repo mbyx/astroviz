@@ -1,3 +1,6 @@
+from glob import glob
+import os
+
 from setuptools import find_packages, setup
 
 package_name = "astroviz"
@@ -18,6 +21,12 @@ setup(
                 "launch/astroviz.launch.py",
             ],
         ),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+
+        (os.path.join('share', package_name, 'icons'), glob('icons/*')),
+
+        (os.path.join('share', package_name, 'config'), glob('config/*')),
+
     ],
     install_requires=["setuptools"],
     zip_safe=True,

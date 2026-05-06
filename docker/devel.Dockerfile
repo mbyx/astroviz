@@ -126,4 +126,11 @@ RUN colcon build --symlink-install --packages-select rslidar_msg --base-paths . 
 
 RUN echo "source /ros2_ws/install/setup.bash" >> /etc/bash.bashrc
 
+RUN apt-get update && apt-get install -y locales && \
+    locale-gen en_US.UTF-8 && \
+    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
 CMD ["bash"]

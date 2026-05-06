@@ -292,12 +292,18 @@ class CameraViewer(QMainWindow):
                 q_format,
             )
 
+            if q_image.isNull():
+                return
+
             pixmap = QPixmap.fromImage(q_image)
-            self.image_label.setPixmap(
-                pixmap.scaled(
-                    self.image_label.size(), Qt.AspectRatioMode.KeepAspectRatio
-                )
-            )
+            if not pixmap.isNull():
+                label_size = self.image_label.size()
+                if label_size.width() > 0 and label_size.height() > 0:
+                    self.image_label.setPixmap(
+                        pixmap.scaled(
+                            label_size, Qt.AspectRatioMode.KeepAspectRatio
+                        )
+                    )
         except Exception as e:
             self.node.get_logger().warn(f"Image conversion failed: {e}")
 

@@ -46,6 +46,7 @@ os.makedirs(_CONFIG_DIR, exist_ok=True)
 CONFIG_PATH = os.path.join(_CONFIG_DIR, 'dashboard_config.json')
 ICONS_DIR  = os.path.join(_PKG_DIR, 'icons')
 
+
 class Panel(QWidget):
     def __init__(self, node: Node, initial_view: str, parent=None):
         super().__init__(parent)

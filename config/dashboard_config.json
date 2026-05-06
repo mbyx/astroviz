@@ -1,16 +1,16 @@
 {
   "views": [
-    "Orthogonal",
     "Camera",
-    "Motor State",
-    "System Health",
-    "IMU"
+    "GPS Map",
+    "Logs",
+    "IMU",
+    "Record Manager"
   ],
   "actual_style": "dark",
   "splitter_sizes": {
     "top": [
-      1249,
-      667
+      1010,
+      906
     ],
     "bottom": [
       605,
@@ -18,8 +18,8 @@
       467
     ],
     "main": [
-      576,
-      421
+      553,
+      405
     ]
   }
 }

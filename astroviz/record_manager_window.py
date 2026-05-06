@@ -111,7 +111,9 @@ class RecordManagerViewer(QWidget):
         cmd = ["ros2", "bag", "play", self.selected_bag_to_play]
         self.play_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.is_playing = True
-        
+
+        self.size_label.setText("Playing...")
+
         self.btn_play.setEnabled(False)
         self.btn_record.setEnabled(False)
         self.btn_load.setEnabled(False)
@@ -177,6 +179,7 @@ class RecordManagerViewer(QWidget):
             self.record_process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             self.record_process.kill()
+
 
         self.record_process = None
         self.is_recording = False
