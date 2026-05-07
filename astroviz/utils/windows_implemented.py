@@ -9,7 +9,6 @@ from astroviz.plot_window import GraphViewer
 from astroviz.record_manager_window import RecordManagerViewer
 from astroviz.robot_state_window import RobotStateViewer
 from astroviz.teleoperation_window import TeleoperationViewer
-from astroviz.test_window import TestWindow
 from astroviz.start_stop_window import StartStopWindow
 from astroviz.logs_window import LogsWindow
 
@@ -25,7 +24,6 @@ VIEW_TYPES = {
     "Motor State": MotorTableViewer,
     "Robot State": RobotStateViewer,
     "Record Manager": RecordManagerViewer,
-    "Test Window": TestWindow,
     "Start/Stop": StartStopWindow,
     "Logs": LogsWindow,
 }
