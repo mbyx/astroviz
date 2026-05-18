@@ -80,20 +80,25 @@ class Panel(QWidget):
 
     def change_view(self, view_name: str):
         if self.current_widget:
-            self.current_widget.setParent(None)
             self.current_widget.hide()
+            self.current_widget.deleteLater()
+            self.current_widget = None
+
         view_class = VIEW_TYPES[view_name]
         widget = view_class(self.node)
         widget.setParent(self.content_area)
         widget.setWindowFlags(Qt.WindowType.Widget)
-        widget.show()
 
         layout = self.content_area.layout()
         while layout.count():
-            old = layout.takeAt(0).widget()
+            item = layout.takeAt(0)
+            old = item.widget()
             if old:
-                old.setParent(None)
+                old.hide()
+                old.deleteLater()
+
         layout.addWidget(widget)
+        widget.show()
         self.current_widget = widget
 
 class TeleoperationDashboard(QMainWindow):
@@ -241,17 +246,24 @@ class TeleoperationDashboard(QMainWindow):
 def main(args=None):
     rclpy.init(args=args)
     app = QApplication(sys.argv)
+
+    app.setQuitOnLastWindowClosed(False)
     LightStyle(app)
     node = rclpy.create_node('teleoperation_node')
     dash = TeleoperationDashboard(node)
+    app.lastWindowClosed.connect(app.quit)
     dash.show()
 
     timer = QTimer()
     timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0))
     timer.start(30)
-    app.exec()
+
+    exit_code = app.exec()
+
     node.destroy_node()
     rclpy.shutdown()
+
+    sys.exit(exit_code)
 
 if __name__ == '__main__':
     main()

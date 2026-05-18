@@ -133,4 +133,14 @@ RUN apt-get update && apt-get install -y locales && \
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
+RUN mkdir rslidar_sdk/
+RUN git clone https://github.com/RoboSense-LiDAR/rslidar_sdk.git src/rslidar_sdk/
+RUN cd src/rslidar_sdk/ && git submodule init && git submodule update
+
+RUN apt-get update && apt-get install -y libpcap-dev libyaml-cpp-dev
+
+RUN git clone https://github.com/RoboSense-LiDAR/rslidar_msg.git src/rslidar_msg
+
+RUN bash -c "source /opt/ros/humble/setup.bash && colcon build"
+
 CMD ["bash"]

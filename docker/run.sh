@@ -19,7 +19,8 @@ done
 # Ensure we are using the native engine
 docker context use default
 
-isRunning=`docker ps -f name=astroviz | grep -c "astroviz"`;
+# -isRunning=`docker ps -f name=astroviz | grep -c "astroviz"`;
+isRunning=0;
 
 if [ $isRunning -eq 0 ]; then
     # Allow showing GUIs locally from docker.
