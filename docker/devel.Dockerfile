@@ -141,6 +141,8 @@ RUN apt-get update && apt-get install -y libpcap-dev libyaml-cpp-dev
 
 RUN git clone https://github.com/RoboSense-LiDAR/rslidar_msg.git src/rslidar_msg
 
+COPY ./config/rslidar_config.yaml /ros2_ws/src/rslidar_sdk/config/config.yaml
+
 RUN bash -c "source /opt/ros/humble/setup.bash && colcon build"
 
 CMD ["bash"]

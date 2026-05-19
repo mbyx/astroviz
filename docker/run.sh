@@ -30,7 +30,7 @@ if [ $isRunning -eq 0 ]; then
     MOUNT_ARG=""
     if [ ! -z "$EXTRA_MOUNT" ]; then
         ABS_MOUNT=$(realpath "$EXTRA_MOUNT")
-        MOUNT_ARG="-v $ABS_MOUNT:/external_data"
+        MOUNT_ARG=("-v" "$ABS_MOUNT:/external_data")
         echo "Mounting $ABS_MOUNT to /external_data"
     fi
 
@@ -56,7 +56,7 @@ if [ $isRunning -eq 0 ]; then
         --device /dev/dri:/dev/dri \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v `pwd`/../:/ros2_ws/src/astroviz \
-        $MOUNT_ARG \
+        "${MOUNT_ARG[@]}" \
         -v /dev:/dev \
         -w /ros2_ws \
         --entrypoint /bin/bash \
