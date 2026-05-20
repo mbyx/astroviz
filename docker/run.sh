@@ -3,6 +3,7 @@
 COMMAND=$1
 DOMAIN_ID=42
 EXTRA_MOUNT=""
+MOUNT_ARG=()
 
 if [ ! -z "$1" ] && [[ "$1" != -* ]]; then
     shift
@@ -27,7 +28,6 @@ if [ $isRunning -eq 0 ]; then
     xhost +local:docker
     docker rm -f astroviz 2>/dev/null || true
 
-    MOUNT_ARG=""
     if [ ! -z "$EXTRA_MOUNT" ]; then
         ABS_MOUNT=$(realpath "$EXTRA_MOUNT")
         MOUNT_ARG=("-v" "$ABS_MOUNT:/external_data")
@@ -55,7 +55,7 @@ if [ $isRunning -eq 0 ]; then
         --env ROS_DOMAIN_ID=$DOMAIN_ID \
         --device /dev/dri:/dev/dri \
         -v /tmp/.X11-unix:/tmp/.X11-unix \
-        -v `pwd`/../:/ros2_ws/src/astroviz \
+        -v "$(pwd)/../:/ros2_ws/src/astroviz" \
         "${MOUNT_ARG[@]}" \
         -v /dev:/dev \
         -w /ros2_ws \

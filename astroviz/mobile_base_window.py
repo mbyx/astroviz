@@ -321,7 +321,7 @@ class MainWindow(QMainWindow):
 
         self.ros_timer = QTimer(self)
         self.ros_timer.timeout.connect(
-            lambda: rclpy.spin_once(self.node, timeout_sec=0)
+            lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None
         )
         self.ros_timer.start(50)
 
@@ -373,6 +373,8 @@ class MainWindow(QMainWindow):
 
     # ---------------------- Topics ----------------------
     def _populate_topics(self):
+        if not rclpy.ok():
+            return
         current_cmd = self.cmd_combo.currentText()
         current_scan = self.scan_combo.currentText()
 

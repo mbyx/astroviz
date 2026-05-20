@@ -132,7 +132,7 @@ class TeleoperationViewer(QMainWindow):
         self.joy_pub = node.create_publisher(Joy, '/teleop/joy', 10)
 
         self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0))
+        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None)
         self.ros_timer.start(30)
 
         self.pub_timer = QTimer(self)

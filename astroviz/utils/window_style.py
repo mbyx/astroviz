@@ -27,8 +27,10 @@ def DarkStyle(app: QApplication):
     app.setPalette(dark_palette)
     app.setStyleSheet(
         "QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }"
+        "QPushButton { background-color: #353535; color: white; border: 1px solid #555555; padding: 4px; border-radius: 3px; }"
+        "QPushButton:hover { background-color: #454545; border: 1px solid #2a82da; }"
+        "QPushButton:pressed { background-color: #222222; border: 1px solid #1a529a; }"
         "QPushButton:checked { background-color: green; color: white; }"
-        "QPushButton { background-color: #353535; color: white; border: 1px solid #555555; padding: 4px; }"
     )
 
 def LightStyle(app: QApplication):
@@ -55,4 +57,8 @@ def LightStyle(app: QApplication):
     app.setPalette(light_palette)
     app.setStyleSheet(
         "QToolTip { color: #000000; background-color: #ffffff; border: 1px solid #000000; }"
-    )   
+        "QPushButton { background-color: #f0f0f0; color: black; border: 1px solid #cccccc; padding: 4px; border-radius: 3px; }"
+        "QPushButton:hover { background-color: #e5e5e5; border: 1px solid #2a82da; }"
+        "QPushButton:pressed { background-color: #d0d0d0; border: 1px solid #1a529a; }"
+        "QPushButton:checked { background-color: #2a82da; color: white; }"
+    )

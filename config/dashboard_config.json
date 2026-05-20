@@ -1,7 +1,7 @@
 {
   "views": [
     "Camera",
-    "GPS Map",
+    "LIDAR",
     "Logs",
     "IMU",
     "Record Manager"

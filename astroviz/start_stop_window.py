@@ -39,7 +39,7 @@ class StartStopWindow(QWidget):
 
         # Timer to spin ROS2
         self.ros_timer = QTimer()
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0))
+        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None)
         self.ros_timer.start(30)
         
         # Timer to update UI
@@ -77,6 +77,8 @@ class StartStopWindow(QWidget):
         layout.addWidget(self.stop_btn)
 
     def update_bool_topics(self):
+        if not rclpy.ok():
+            return
         current = self.combo.currentText()
         
         # Get REAL topics from ROS graph

@@ -159,7 +159,7 @@ class MainWindow(QMainWindow):
         self.topic_timer.start(1000)
 
         self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0))
+        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None)
         self.ros_timer.start(50)
 
     def showEvent(self, event):
@@ -178,6 +178,8 @@ class MainWindow(QMainWindow):
         self.combo.move(x, y)
 
     def _populate_imu_topics(self):
+        if not rclpy.ok():
+            return
         current = self.combo.currentText()
         all_topics = self.node.get_topic_names_and_types()
         imu_topics = [

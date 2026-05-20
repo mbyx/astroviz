@@ -159,7 +159,7 @@ class MainWindow(QMainWindow):
         # keep rclpy spinning
         self.ros_timer = QTimer(self)
         self.ros_timer.timeout.connect(
-            lambda: rclpy.spin_once(self.node, timeout_sec=0)
+            lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None
         )
         self.ros_timer.start(30)
 

@@ -69,8 +69,14 @@ class GPSMapWindow(QMainWindow):
         self.map_html_path = os.path.join(self.map_dir, "live_map.html")
 
         self.create_map_html()
+
+        self.server_port = 8080
+        self.httpd = self.setup_http_server(root=_PKG_DIR, directory=_PKG_DIR)
+
+        self.node.get_logger().info("Starting http thread!")
+
         threading.Thread(
-            target=lambda: self.start_http_server(root=_PKG_DIR, directory=_PKG_DIR),
+            target=self.httpd.serve_forever,
             daemon=True
         ).start()
 
@@ -133,7 +139,7 @@ class GPSMapWindow(QMainWindow):
         h_layout.addWidget(btn_container, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.view = QWebEngineView()
-        self.view.setUrl(QUrl("http://localhost:8080/maps/live_map.html"))
+        self.view.setUrl(QUrl(f"http://localhost:{self.server_port}/maps/live_map.html"))
 
         self.nav_combo = QComboBox(self.view)
         self.nav_combo.setFixedWidth(200)
@@ -144,6 +150,8 @@ class GPSMapWindow(QMainWindow):
         self.latitude = None
         self.longitude = None
         self.first_gps = False
+        self.updating_graph = False
+        
         self._populate_nav_topics()
         self.nav_timer = QTimer(self)
         self.nav_timer.timeout.connect(self._populate_nav_topics)
@@ -158,8 +166,12 @@ class GPSMapWindow(QMainWindow):
 
         node.create_subscription(Int32, '/ublox_7/sensor/satellites', self.on_sats, 10)
         self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0))
+        self.ros_timer.timeout.connect(
+            lambda: rclpy.spin_once(node, timeout_sec=0) if rclpy.ok() and not self.updating_graph else None
+        )
         self.ros_timer.start(50)
+
+        self.node.get_logger().info("Finished setting up GPS Map!")
 
     def get_screen_size(self):
         screen = QApplication.primaryScreen()
@@ -183,9 +195,16 @@ class GPSMapWindow(QMainWindow):
         self.nav_combo.move(x, y)
 
     def _populate_nav_topics(self):
-        current = self.nav_combo.currentText()
-        all_topics = self.node.get_topic_names_and_types()
-        nav_topics = [name for name, types in all_topics if 'sensor_msgs/msg/NavSatFix' in types]
+        if not rclpy.ok():
+            return
+        self.updating_graph = True
+        try:
+            current = self.nav_combo.currentText()
+            all_topics = self.node.get_topic_names_and_types()
+            nav_topics = [name for name, types in all_topics if 'sensor_msgs/msg/NavSatFix' in types]
+        finally:
+            self.updating_graph = False
+
         items = ['---'] + nav_topics
         old = [self.nav_combo.itemText(i) for i in range(self.nav_combo.count())]
         if old == items:
@@ -227,13 +246,18 @@ class GPSMapWindow(QMainWindow):
         self.sat_label.setText(f": <b><span style='color:{color}'>{sats}</span></b>")
 
     def on_gps(self, msg: NavSatFix):
+        if self.first_gps:
+            self.latitude = msg.latitude
+            self.longitude = msg.longitude
+            self.pos_label.setText(f"<b>Lat:</b> {self.latitude:.6f}, <b>Lon:</b> {self.longitude:.6f}")
+            return
+
+        self.first_gps = True
         self.latitude = msg.latitude
         self.longitude = msg.longitude
         self.pos_label.setText(f"<b>Lat:</b> {self.latitude:.6f}, <b>Lon:</b> {self.longitude:.6f}")
-        if not self.first_gps:
-            self.first_gps = True
-            self._write_json()
-            QTimer.singleShot(0, self._start_update_timer)
+        self._write_json()
+        self._start_update_timer()
 
     def _start_update_timer(self):
         self.timer = QTimer(self)
@@ -241,8 +265,11 @@ class GPSMapWindow(QMainWindow):
         self.timer.start(1000)
 
     def _write_json(self):
-        with open(self.json_path, 'w') as f:
-            json.dump({'lat': self.latitude, 'lon': self.longitude}, f)
+        try:
+            with open(self.json_path, 'w') as f:
+                json.dump({'lat': self.latitude, 'lon': self.longitude}, f)
+        except Exception:
+            pass
 
     def update_json(self):
         if not self.first_gps:
@@ -267,10 +294,10 @@ class GPSMapWindow(QMainWindow):
         self.view.page().runJavaScript('toggleAddMode();')
 
     def center_map(self):
-        js = '''
+        js = f'''
             fetch('/maps/gps_data.json?_='+Date.now())
             .then(r=>r.json())
-            .then(o=>{ map.invalidateSize(true); map.setView([o.lat,o.lon], map.getZoom()); });
+            .then(o=>{{ map.invalidateSize(true); map.setView([o.lat,o.lon], map.getZoom()); }});
         '''
         self.view.page().runJavaScript(js)
 
@@ -291,7 +318,8 @@ class GPSMapWindow(QMainWindow):
         '''
         self.view.page().runJavaScript(js)
 
-    def start_http_server(self, root: str, directory: str):
+    def setup_http_server(self, root: str, directory: str):
+        """Initializes socket setup strictly inside parent thread context."""
         os.chdir(root)
         socketserver.TCPServer.allow_reuse_address = True
         handler = lambda *args, **kw: QuietHandler(*args, directory=directory, **kw)
@@ -299,18 +327,13 @@ class GPSMapWindow(QMainWindow):
         for port in [8080] + list(range(8081, 8090)):
             try:
                 httpd = socketserver.TCPServer(("", port), handler)
-                break
+                self.server_port = port
+                return httpd
             except OSError:
                 continue
-        else:
-            self.node.get_logger().error("Could not bind any port between 8080–8089")
-            return
-
-        url = f"http://localhost:{port}/maps/live_map.html"
-        QTimer.singleShot(0, lambda: self.view.setUrl(QUrl(url)))
-
-        httpd.serve_forever()
-
+        
+        self.node.get_logger().error("Could not bind any port between 8080–8089")
+        sys.exit(-1)
 
     def create_map_html(self):
         html = """
@@ -425,8 +448,9 @@ def main(args=None):
     win = GPSMapWindow(node)
     win.show()
 
-    app.exec()
+    exit_code = app.exec()
     rclpy.shutdown()
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

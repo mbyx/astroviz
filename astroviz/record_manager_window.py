@@ -247,6 +247,8 @@ class RecordManagerViewer(QWidget):
         self.size_label.setText(f"Size: {size_str}")
 
     def update_topics(self):
+        if not rclpy.ok():
+            return
         current_topics = [name for name, _ in self.node.get_topic_names_and_types()]
         if set(self.all_topics) == set(current_topics):
             return
@@ -304,7 +306,7 @@ def main(args=None):
     viewer.show()
 
     timer = QTimer()
-    timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0))
+    timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0) if rclpy.ok() else None)
     timer.start(50)
 
     app.exec()

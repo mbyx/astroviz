@@ -96,7 +96,7 @@ class LiDARViewer(QMainWindow):
         self.gl_widget.addItem(self.scatter)
 
         self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0))
+        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0) if rclpy.ok() else None)
         self.ros_timer.start(10)
 
         self.update_timer = QTimer(self)
@@ -120,6 +120,8 @@ class LiDARViewer(QMainWindow):
         self.btn_2d.move(x_btn, y_combo)
 
     def _populate_topics(self):
+        if not rclpy.ok():
+            return
         current = self.combo.currentText()
         all_topics = self.node.get_topic_names_and_types()
         pc2_topics = [name for name, types in all_topics if 'sensor_msgs/msg/PointCloud2' in types]

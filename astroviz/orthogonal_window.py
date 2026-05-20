@@ -767,6 +767,8 @@ class OrthogonalViewer(QMainWindow):
 
     # ===================== FRAMES & RENDERING =====================
     def _populate_frames(self):
+        if not rclpy.ok():
+            return
         try:
             lines = self.tf_buffer.all_frames_as_string().splitlines()
             frames = [L.split()[1] for L in lines if L.startswith('Frame ')]

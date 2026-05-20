@@ -3,22 +3,30 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    """Launches the astroviz dashboard with the realsense-ros integration.
+    """Launches the astroviz dashboard.
 
-    If `use_mock_camera` is true, the mock camera node is run instead for testing."""
+    If `use_mock_camera` is true, the mock camera node is run for testing.
+    If `use_rs_camera` is true, the realsense camera node is run as well."""
 
     use_mock_camera = LaunchConfiguration("use_mock_camera")
+    use_rs_camera = LaunchConfiguration("use_rs_camera")
 
     declare_use_mock_camera = DeclareLaunchArgument(
         "use_mock_camera",
         default_value="false",
-        description="If true, runs the mock camera node instead of the real integration",
+        description="If true, runs the mock camera node.",
+    )
+
+    declare_use_realsense_camera = DeclareLaunchArgument(
+        "use_rs_camera",
+        default_value="false",
+        description="If true, runs the realsense camera node.",
     )
 
     # Attempt to find the realsense2 launch file.
@@ -29,11 +37,12 @@ def generate_launch_description():
     return LaunchDescription(
         [
             declare_use_mock_camera,
+            declare_use_realsense_camera,
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(realsense_launch_dir, "rs_launch.py")
                 ),
-                condition=UnlessCondition(use_mock_camera),
+                condition=IfCondition(use_rs_camera),
                 launch_arguments={
                     # Profiles and Hardware.
                     "depth_module.depth_profile": "848x480x30",

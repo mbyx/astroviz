@@ -86,7 +86,7 @@ class LogsWindow(QWidget):
         self.topic_timer.start(2000)
 
         self.ros_timer = QTimer()
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0))
+        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None)
         self.ros_timer.start(30)
 
 
@@ -114,6 +114,8 @@ class LogsWindow(QWidget):
         layout.addWidget(self.text_area)
 
     def refresh_topics_list(self):
+        if not rclpy.ok():
+            return
         all_topics = self.node.get_topic_names_and_types()
         log_topics = [
             name for name, types in all_topics

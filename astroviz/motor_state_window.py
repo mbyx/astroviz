@@ -70,6 +70,8 @@ class MotorTableViewer(QWidget):
         self.refresh_timer.start(100)
 
     def _populate_topics(self):
+        if not rclpy.ok():
+            return
         current = self.topic_combo.currentText()
         available = [name for name, types in self.node.get_topic_names_and_types()
                      if 'astroviz_interfaces/msg/MotorStateList' in types]
@@ -153,7 +155,7 @@ def main(args=None):
     viewer.show()
 
     spin_timer = QTimer()
-    spin_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0))
+    spin_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0) if rclpy.ok() else None)
     spin_timer.start(10)
 
     app.exec()

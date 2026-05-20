@@ -255,13 +255,14 @@ def main(args=None):
     dash.show()
 
     timer = QTimer()
-    timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0))
+    timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0) if rclpy.ok() else None)
     timer.start(30)
 
     exit_code = app.exec()
 
     node.destroy_node()
-    rclpy.shutdown()
+    if rclpy.ok():
+        rclpy.shutdown()
 
     sys.exit(exit_code)
 

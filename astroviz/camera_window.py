@@ -100,7 +100,7 @@ class CameraViewer(QMainWindow):
         self.combo.currentTextChanged.connect(self.change_image_topic)
         self.layout.addWidget(self.combo, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        content_layout = QHBoxLayout()
+        self.content_layout = QHBoxLayout()
 
         self.image_label = QLabel("Waiting for image...")
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -113,10 +113,10 @@ class CameraViewer(QMainWindow):
         )
         self.depth_scale.hide()
 
-        content_layout.addWidget(self.image_label)
-        content_layout.addWidget(self.depth_scale)
+        self.content_layout.addWidget(self.image_label)
+        self.content_layout.addWidget(self.depth_scale)
 
-        self.layout.addLayout(content_layout)
+        self.layout.addLayout(self.content_layout)
 
         btn_layout = QHBoxLayout()
         self.btn_left = QPushButton("⟲ 90° Left")
@@ -137,7 +137,7 @@ class CameraViewer(QMainWindow):
 
         self.ros_timer = QTimer()
         self.ros_timer.timeout.connect(
-            lambda: rclpy.spin_once(self.node, timeout_sec=0)
+            lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None
         )
         self.ros_timer.start(30)
 
@@ -148,6 +148,8 @@ class CameraViewer(QMainWindow):
         self.rotation_angle = (self.rotation_angle + 90) % 360
 
     def update_image_topics(self):
+        if not rclpy.ok():
+            return
         current = self.combo.currentText()
         all_topics = self.node.get_topic_names_and_types()
         image_topics = [

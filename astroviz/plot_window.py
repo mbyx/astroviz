@@ -110,6 +110,8 @@ class GraphViewer(QWidget):
         self._append('latency', ms)
 
     def _update_batt_topics(self):
+        if not rclpy.ok():
+            return
         curr = self.batt_combo.currentText()
         tops = [n for n,t in self.node.get_topic_names_and_types()
                 if 'sensor_msgs/msg/BatteryState' in t]

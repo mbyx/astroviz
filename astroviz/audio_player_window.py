@@ -231,7 +231,7 @@ class MainWindow(QMainWindow):
 
         self.ros_timer = QTimer(self)
         self.ros_timer.timeout.connect(
-            lambda: rclpy.spin_once(self.node, timeout_sec=0)
+            lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None
         )
         self.ros_timer.start(50)
 
@@ -259,6 +259,8 @@ class MainWindow(QMainWindow):
         self.combo.move(x, y)
 
     def _populate_topics(self):
+        if not rclpy.ok():
+            return
         current = self.combo.currentText()
         all_topics = self.node.get_topic_names_and_types()
         audio_topics = [

@@ -107,7 +107,7 @@ class GridMapViewer(QMainWindow):
         self._first_map = True
 
         self.ros_timer = QTimer(self)
-        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0))
+        self.ros_timer.timeout.connect(lambda: rclpy.spin_once(self.node, timeout_sec=0) if rclpy.ok() else None)
         self.ros_timer.start(10)
 
         self.topic_timer = QTimer(self)
@@ -117,6 +117,8 @@ class GridMapViewer(QMainWindow):
         self._populate_topics()
 
     def _populate_topics(self):
+        if not rclpy.ok():
+            return
         topics = self.node.get_topic_names_and_types()
         grids = [n for n, t in topics if 'nav_msgs/msg/OccupancyGrid' in t]
         items = ['---'] + sorted(grids)
